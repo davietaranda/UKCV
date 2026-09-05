@@ -40,15 +40,25 @@ export async function GET() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), DB_CHECK_TIMEOUT_MS);
     try {
+      // Deliberately not a HEAD request: HEAD responses never carry a body,
+      // so on failure postgrest-js has no JSON error to parse and `error`
+      // ends up with an empty message/code/details — exactly the dead end
+      // hit diagnosing this endpoint. A normal minimal select still returns
+      // a real error body (401, table-not-found, etc.) to log.
       const supabase = createAdminClient();
       const { error } = await supabase
         .from("requests")
-        .select("id", { head: true, count: "exact" })
+        .select("id")
         .abortSignal(controller.signal)
         .limit(1);
       databaseReachable = !error;
       if (error) {
-        logger.error("Health check: database query failed", { message: error.message });
+        logger.error("Health check: database query failed", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
       }
     } catch (err) {
       databaseReachable = false;
