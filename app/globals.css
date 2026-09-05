@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Components must reference these (via Tailwind's generated
+ * color/spacing/radius utilities) rather than hardcoding hex values, so the
+ * visual system can be re-themed from one place.
+ */
+:root {
+  /* Base surface + text */
+  --color-background: #ffffff;
+  --color-foreground: #16181d;
+  --color-muted: #f4f5f7;
+  --color-muted-foreground: #6b7280;
+  --color-border: #e5e7eb;
+
+  /* Brand accent — deep indigo, used sparingly (links, primary actions) */
+  --color-accent: #2b3a91;
+  --color-accent-foreground: #ffffff;
+  --color-accent-muted: #eef0fb;
+
+  /* Semantic status colours — admin badges, alerts */
+  --color-success: #15803d;
+  --color-success-muted: #ecfdf3;
+  --color-warning: #b45309;
+  --color-warning-muted: #fffaeb;
+  --color-danger: #b91c1c;
+  --color-danger-muted: #fef2f2;
+  --color-info: #1d4ed8;
+  --color-info-muted: #eff4ff;
+
+  /* Surfaces */
+  --color-card: #ffffff;
+  --color-card-foreground: #16181d;
+
+  /* Radius + shadow scale */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.08);
+}
+
+@theme inline {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-muted: var(--color-muted);
+  --color-muted-foreground: var(--color-muted-foreground);
+  --color-border: var(--color-border);
+
+  --color-accent: var(--color-accent);
+  --color-accent-foreground: var(--color-accent-foreground);
+  --color-accent-muted: var(--color-accent-muted);
+
+  --color-success: var(--color-success);
+  --color-success-muted: var(--color-success-muted);
+  --color-warning: var(--color-warning);
+  --color-warning-muted: var(--color-warning-muted);
+  --color-danger: var(--color-danger);
+  --color-danger-muted: var(--color-danger-muted);
+  --color-info: var(--color-info);
+  --color-info-muted: var(--color-info-muted);
+
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-card-foreground);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
