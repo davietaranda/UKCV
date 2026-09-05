@@ -7,13 +7,17 @@ import type { NextConfig } from "next";
 // just dev). 'unsafe-inline' for scripts is a real trade-off — it weakens
 // XSS defense-in-depth — but every other directive here is strict, and a
 // working CSP beats a theoretically-stronger one that breaks the app.
+const isDev = process.env.NODE_ENV !== "production";
+
+// 'unsafe-eval' is dev-only — Turbopack/React dev-mode call-stack
+// reconstruction needs it (harmless: React never uses eval() in production).
 const csp = [
   `default-src 'self'`,
-  `script-src 'self' 'unsafe-inline'`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' data:`,
   `font-src 'self' data:`,
-  `connect-src 'self' ${originOnly(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? ""}`.trim(),
+  `connect-src 'self' ${originOnly(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? ""}${isDev ? " ws://localhost:*" : ""}`.trim(),
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
   `form-action 'self'`,
