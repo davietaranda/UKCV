@@ -36,7 +36,7 @@ const serverEnvSchema = z.object({
 
   AI_PROVIDER: z.enum(["gemini"]).default("gemini"),
   GEMINI_API_KEY: z.string().min(1),
-  GEMINI_MODEL: z.string().min(1).default("gemini-2.5-flash"),
+  GEMINI_MODEL: z.string().min(1).default("gemini-3.6-flash"),
 
   RETENTION_DAYS: z.coerce.number().int().positive().default(30),
 
