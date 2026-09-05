@@ -15,27 +15,53 @@ function optionalString<T extends z.ZodTypeAny>(schema: T) {
   return z.preprocess((v) => (v === "" ? undefined : v), schema.optional());
 }
 
+/**
+ * Secret-like values (JWTs, API keys, hex tokens, URLs) are always pure
+ * ASCII — they can never legitimately contain a character like "•". A
+ * dashboard copy-paste mistake (e.g. a masked "secret" field's dot
+ * placeholder landing alongside the real value) produces exactly that: a
+ * string that passes `.min(1)` but silently corrupts every HTTP header
+ * built from it later. That failure previously surfaced ~7s and 3 retries
+ * deep inside @supabase/postgrest-js as a cryptic "Cannot convert argument
+ * to a ByteString" TypeError. Catching it here fails in <1ms with a
+ * message that names the actual bad character.
+ */
+function asciiString<T extends z.ZodString>(schema: T) {
+  return schema.superRefine((v, ctx) => {
+    for (let i = 0; i < v.length; i++) {
+      const code = v.charCodeAt(i);
+      if (code > 255) {
+        ctx.addIssue({
+          code: "custom",
+          message: `contains a non-ASCII character (code point ${code} at index ${i}) — check for a copy/paste artifact, e.g. a masked "•" placeholder pasted alongside the real value`,
+        });
+        return;
+      }
+    }
+  });
+}
+
 const serverEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
   NEXT_PUBLIC_SUPPORT_EMAIL: optionalString(z.string().email()),
 
-  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_URL: asciiString(z.string().url()),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: asciiString(z.string().min(1)),
+  SUPABASE_SERVICE_ROLE_KEY: asciiString(z.string().min(1)),
 
   // Any S3-compatible object storage (Cloudflare R2, Supabase Storage,
   // Backblaze B2, MinIO, ...) — STORAGE_ENDPOINT is the full base URL, not
   // just an account ID, since that varies by provider.
-  STORAGE_ENDPOINT: z.string().url(),
-  STORAGE_ACCESS_KEY_ID: z.string().min(1),
-  STORAGE_SECRET_ACCESS_KEY: z.string().min(1),
-  STORAGE_BUCKET_NAME: z.string().min(1),
+  STORAGE_ENDPOINT: asciiString(z.string().url()),
+  STORAGE_ACCESS_KEY_ID: asciiString(z.string().min(1)),
+  STORAGE_SECRET_ACCESS_KEY: asciiString(z.string().min(1)),
+  STORAGE_BUCKET_NAME: asciiString(z.string().min(1)),
   // R2 uses "auto"; other S3-compatible providers (e.g. Supabase Storage)
   // require their actual project region.
   STORAGE_REGION: z.string().min(1).default("auto"),
 
   AI_PROVIDER: z.enum(["gemini"]).default("gemini"),
-  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_API_KEY: asciiString(z.string().min(1)),
   GEMINI_MODEL: z.string().min(1).default("gemini-3.6-flash"),
 
   RETENTION_DAYS: z.coerce.number().int().positive().default(30),
