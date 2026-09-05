@@ -9,24 +9,32 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getServerEnv } from "@/lib/env";
 
+/**
+ * Works with any S3-compatible object storage — Cloudflare R2, Supabase
+ * Storage, Backblaze B2, MinIO, etc. — configured entirely through
+ * STORAGE_* env vars (see lib/env.ts). Nothing here is Cloudflare-specific
+ * despite the filename/original naming.
+ */
+
 let cachedClient: S3Client | undefined;
 
 function getClient(): S3Client {
   if (cachedClient) return cachedClient;
   const env = getServerEnv();
   cachedClient = new S3Client({
-    region: "auto",
-    endpoint: `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    region: env.STORAGE_REGION,
+    endpoint: env.STORAGE_ENDPOINT,
+    forcePathStyle: true,
     credentials: {
-      accessKeyId: env.R2_ACCESS_KEY_ID,
-      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      accessKeyId: env.STORAGE_ACCESS_KEY_ID,
+      secretAccessKey: env.STORAGE_SECRET_ACCESS_KEY,
     },
   });
   return cachedClient;
 }
 
-/** Uploads a file to the private R2 bucket. Object keys should follow the
- * `requests/{requestId}/...` convention documented in the README. */
+/** Uploads a file to the private storage bucket. Object keys should follow
+ * the `requests/{requestId}/...` convention documented in the README. */
 export async function uploadObject(
   key: string,
   body: Buffer | Uint8Array,
@@ -35,7 +43,7 @@ export async function uploadObject(
   const env = getServerEnv();
   await getClient().send(
     new PutObjectCommand({
-      Bucket: env.R2_BUCKET_NAME,
+      Bucket: env.STORAGE_BUCKET_NAME,
       Key: key,
       Body: body,
       ContentType: contentType,
@@ -49,11 +57,11 @@ export async function uploadObject(
 export async function getObjectBytes(key: string): Promise<Uint8Array> {
   const env = getServerEnv();
   const result = await getClient().send(
-    new GetObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key })
+    new GetObjectCommand({ Bucket: env.STORAGE_BUCKET_NAME, Key: key })
   );
   const body = result.Body;
   if (!body) {
-    throw new Error(`R2 object has no body: ${key}`);
+    throw new Error(`Storage object has no body: ${key}`);
   }
   const bytes = await body.transformToByteArray();
   return bytes;
@@ -67,7 +75,7 @@ export async function getSignedDownloadUrl(
 ): Promise<string> {
   const env = getServerEnv();
   const command = new GetObjectCommand({
-    Bucket: env.R2_BUCKET_NAME,
+    Bucket: env.STORAGE_BUCKET_NAME,
     Key: key,
   });
   return getSignedUrl(getClient(), command, { expiresIn: expiresInSeconds });
@@ -76,7 +84,7 @@ export async function getSignedDownloadUrl(
 export async function deleteObject(key: string): Promise<void> {
   const env = getServerEnv();
   await getClient().send(
-    new DeleteObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key })
+    new DeleteObjectCommand({ Bucket: env.STORAGE_BUCKET_NAME, Key: key })
   );
 }
 

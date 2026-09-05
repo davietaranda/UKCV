@@ -9,10 +9,10 @@ delivery. See the master build spec for full product/architecture detail.
 ## Stack
 
 Next.js 16 (App Router, Turbopack) + TypeScript + Tailwind CSS v4, Supabase
-(Postgres + Auth for admin login only), Cloudflare R2 (private document
-storage), Gemini API (client-owned key) for AI, Zod for validation, `docx`
-+ `@react-pdf/renderer` for document generation, `pdf-parse` + `mammoth`
-for CV text extraction.
+(Postgres + Auth for admin login only), any S3-compatible object storage
+for private documents (Cloudflare R2, Supabase Storage, etc.), Gemini API
+(client-owned key) for AI, Zod for validation, `docx` + `@react-pdf/renderer`
+for document generation, `pdf-parse` + `mammoth` for CV text extraction.
 
 ## Local setup
 
@@ -41,9 +41,11 @@ All required variables are listed in `.env.example`. Notably:
   Only used from trusted server code (`lib/supabase/admin.ts`), specifically
   the public submission flow (unauthenticated by design) and the cron
   retention endpoint (no browser session to authenticate with).
-- `R2_*` — Cloudflare R2 credentials for the private document bucket. Use an
-  R2 API token scoped to just that one bucket (Cloudflare dashboard → R2 →
-  Manage API Tokens), not an account-wide token.
+- `STORAGE_*` — credentials for the private document bucket, any
+  S3-compatible provider (Cloudflare R2, Supabase Storage, Backblaze B2,
+  ...). Use a token scoped to just that one bucket where the provider
+  supports it (e.g. Cloudflare dashboard → R2 → Manage API Tokens), not an
+  account-wide token.
 - `RETENTION_DAYS` — how long delivered/archived requests are kept before
   they're eligible for deletion. See "Retention & deletion" below.
 - `CRON_SECRET` — required before wiring up the scheduled retention sweep;
@@ -55,7 +57,8 @@ Never commit `.env` / `.env.local` — `.gitignore` already excludes them.
 
 The developer does not own or pay for production AI usage. The client owns
 the Gemini API account, billing, and production API key; the client also
-owns the production Supabase, R2, and Vercel accounts where practical. The
+owns the production Supabase, object storage, and Vercel accounts where
+practical. The
 application reads `GEMINI_API_KEY` from environment configuration only — it
 is never hardcoded.
 
@@ -64,8 +67,9 @@ is never hardcoded.
 1. **Supabase**: create a production project, run
    `supabase/migrations/0001_init.sql` against it, create the first admin
    user (see "Local setup" above) in the production project specifically.
-2. **Cloudflare R2**: create a private production bucket + a bucket-scoped
-   API token (not account-wide).
+2. **Object storage**: create a private production bucket with an
+   S3-compatible provider (Cloudflare R2, Supabase Storage, etc.) + a
+   bucket-scoped API token/key where the provider supports it.
 3. **Gemini**: the client creates their own API key on their own Google
    account/billing (see "Ownership / billing"). Pick a `GEMINI_MODEL` that's
    generally available, not a preview/experimental model, for production.
@@ -92,23 +96,22 @@ is never hardcoded.
    logs and basic observability out of the box with no extra setup.
 6. **Before going live**: run through spec §35's success criteria list end
    to end against the production environment — submit a real request,
-   confirm it lands in Supabase/R2, run AI analysis, generate documents,
+   confirm it lands in Supabase/storage, run AI analysis, generate documents,
    review/approve/deliver, confirm the customer-facing copy and legal pages
    are ones the client has actually reviewed (see the note in the Phase 2
    summary — the FAQ/example-transformation copy was drafted by the AI
    build process and hasn't been client-reviewed).
 
-Verifying the AI pipeline, document generation, and file upload against a
-*live* backend hasn't been possible during this build — there's no
-Supabase/R2/Gemini project connected to it yet. Everything that could be
-verified without live credentials has been (see each phase's report for
-specifics); the rest needs a real run once this is deployed.
+The admin login flow has been verified against a real Supabase project
+(sign-in, session, live dashboard). The AI pipeline, document generation,
+and file upload still haven't been verified against live infrastructure —
+object storage and Gemini aren't connected yet.
 
 ## Retention & deletion
 
 Delivered or archived requests older than `RETENTION_DAYS` (based on last
 status change, not raw submission date — in-flight requests are never
-auto-deleted) are eligible for permanent deletion: every file in R2 plus
+auto-deleted) are eligible for permanent deletion: every file in storage plus
 the full database record (cascades to `cv_documents`, `job_analysis`,
 `matching`, `outputs`, `ai_runs`).
 
@@ -175,7 +178,7 @@ proxy.ts                      Middleware — refreshes the Supabase session cook
 lib/
   env.ts                      Zod-validated environment config — import from here, not process.env
   supabase/                   client.ts (browser), server.ts (RLS-respecting), admin.ts (service role)
-  storage/r2.ts                Private R2 upload/download/delete (signed URLs only)
+  storage/r2.ts                Private S3-compatible storage upload/download/delete (signed URLs only)
   security/rate-limit.ts       IP hashing for the submission rate limit
   validation/                  Zod schemas + file signature/size/extension checks
   documents/                   CV/cover-letter content model + PDF (react-pdf) + DOCX (docx) rendering
