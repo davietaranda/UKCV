@@ -9,11 +9,16 @@
 type LogContext = Record<string, string | number | boolean | null | undefined>;
 
 function emit(level: "info" | "warn" | "error", message: string, context?: LogContext) {
+  // `context` is nested under its own key rather than spread at the top
+  // level — a caller passing e.g. { message: error.message } would
+  // otherwise silently overwrite this function's own `message` argument,
+  // destroying the human-readable label and leaving only the raw (and
+  // sometimes empty) underlying error string.
   const entry = {
     level,
     message,
-    ...context,
     timestamp: new Date().toISOString(),
+    ...(context ? { context } : {}),
   };
   const line = JSON.stringify(entry);
   if (level === "error") console.error(line);
