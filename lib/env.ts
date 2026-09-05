@@ -6,9 +6,18 @@ import { z } from "zod";
  * or malformed variable fails fast at startup rather than deep in a request.
  */
 
+/** `.env.local` and Vercel both represent "unset" as an empty string for an
+ * optional field, not as the key being absent — plain `.optional()` doesn't
+ * treat "" as absent, so an optional field left blank still fails its own
+ * validator (e.g. .email(), .min(16)). This normalizes "" to undefined
+ * first so `.optional()` actually behaves as "blank is fine". */
+function optionalString<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((v) => (v === "" ? undefined : v), schema.optional());
+}
+
 const serverEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
-  NEXT_PUBLIC_SUPPORT_EMAIL: z.string().email().optional(),
+  NEXT_PUBLIC_SUPPORT_EMAIL: optionalString(z.string().email()),
 
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
@@ -33,7 +42,7 @@ const serverEnvSchema = z.object({
 
   // Shared secret for the scheduled retention endpoint (app/api/cron/retention).
   // Optional in dev; required before wiring up a real cron trigger.
-  CRON_SECRET: z.string().min(16).optional(),
+  CRON_SECRET: optionalString(z.string().min(16)),
 
   ADMIN_ALLOWED_EMAILS: z
     .string()
@@ -91,7 +100,7 @@ export function getSupportEmail(): string | null {
 export function getPublicEnv(): PublicEnv {
   const parsed = publicEnvSchema.safeParse({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_SUPPORT_EMAIL: process.env.NEXT_PUBLIC_SUPPORT_EMAIL || undefined,
+    NEXT_PUBLIC_SUPPORT_EMAIL: process.env.NEXT_PUBLIC_SUPPORT_EMAIL,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   });
