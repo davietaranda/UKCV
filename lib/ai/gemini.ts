@@ -18,6 +18,7 @@ import { buildEvidenceMatchingPrompt } from "@/lib/ai/prompts/evidence-matching"
 import { buildCVTailoringPrompt } from "@/lib/ai/prompts/cv-tailoring";
 import { buildCoverLetterPrompt } from "@/lib/ai/prompts/cover-letter";
 import { buildApplicationAnswersPrompt } from "@/lib/ai/prompts/application-answers";
+import { zodToGeminiSchema } from "@/lib/ai/json-schema";
 
 let cachedClient: GoogleGenerativeAI | undefined;
 
@@ -43,7 +44,10 @@ export async function generateStructuredJSON<T>(params: {
   const model = getClient().getGenerativeModel({
     model: env.GEMINI_MODEL,
     systemInstruction: params.systemInstruction,
-    generationConfig: { responseMimeType: "application/json" },
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: zodToGeminiSchema(params.schema),
+    },
   });
 
   const started = Date.now();
