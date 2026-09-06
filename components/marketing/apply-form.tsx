@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { submitRequest, type ApplyState } from "@/app/(marketing)/apply/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,13 @@ import { cn } from "@/lib/utils";
 
 const initialState: ApplyState = {};
 
-export function ApplyForm({ initialPackageId }: { initialPackageId?: string }) {
+export function ApplyForm({
+  initialPackageId,
+  turnstileSiteKey,
+}: {
+  initialPackageId?: string;
+  turnstileSiteKey?: string;
+}) {
   const [state, formAction, isPending] = useActionState(submitRequest, initialState);
   const [selectedPackage, setSelectedPackage] = useState(
     PACKAGES.find((p) => p.id === initialPackageId)?.id ?? PACKAGES[0].id
@@ -161,6 +168,16 @@ export function ApplyForm({ initialPackageId }: { initialPackageId?: string }) {
           <p className="text-sm text-danger">{fieldError("consent")}</p>
         ) : null}
       </section>
+
+      {/* Only rendered once the client sets up a Turnstile widget (see
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY in .env.example) — CAPTCHA is
+          opt-in, not required for the form to work. */}
+      {turnstileSiteKey ? (
+        <>
+          <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+          <div className="cf-turnstile" data-sitekey={turnstileSiteKey} />
+        </>
+      ) : null}
 
       <Button type="submit" size="lg" disabled={isPending}>
         {isPending ? "Submitting..." : "Submit my request"}

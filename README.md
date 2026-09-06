@@ -144,7 +144,12 @@ Three ways to trigger it:
   pathological file hanging the parser.
 - Public submission is rate-limited two ways: 3/day per email, 5/hour per
   IP (SHA-256 hashed, not stored raw). Neither is bulletproof against a
-  determined attacker — add a CAPTCHA if abuse shows up in practice.
+  determined attacker on its own.
+- Cloudflare Turnstile CAPTCHA on the public form — opt-in: unset by
+  default (the form works without it), activates automatically once
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET_KEY` are set (see
+  `.env.example`). Verified server-side in `app/(marketing)/apply/actions.ts`
+  before any file processing or DB writes.
 - AI prompts explicitly separate system instructions from CV/job-description
   content and instruct the model to treat the latter as data, never
   instructions (see `lib/ai/prompts/shared.ts`) — defence against prompt

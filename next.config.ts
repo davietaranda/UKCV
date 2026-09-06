@@ -11,13 +11,20 @@ const isDev = process.env.NODE_ENV !== "production";
 
 // 'unsafe-eval' is dev-only — Turbopack/React dev-mode call-stack
 // reconstruction needs it (harmless: React never uses eval() in production).
+// Cloudflare Turnstile (optional CAPTCHA on /apply — see
+// NEXT_PUBLIC_TURNSTILE_SITE_KEY) needs its script allowed and its
+// challenge iframe allowed via frame-src; harmless to include even when the
+// site key isn't configured, since nothing loads from that host otherwise.
+const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com";
+
 const csp = [
   `default-src 'self'`,
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' ${TURNSTILE_ORIGIN}${isDev ? " 'unsafe-eval'" : ""}`,
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' data:`,
   `font-src 'self' data:`,
   `connect-src 'self' ${originOnly(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? ""}${isDev ? " ws://localhost:*" : ""}`.trim(),
+  `frame-src ${TURNSTILE_ORIGIN}`,
   `frame-ancestors 'none'`,
   `base-uri 'self'`,
   `form-action 'self'`,

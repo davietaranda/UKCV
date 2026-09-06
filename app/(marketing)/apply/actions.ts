@@ -7,6 +7,7 @@ import { validateCvFile, sanitizeFilename } from "@/lib/validation/file";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadObject, originalCvKey } from "@/lib/storage/r2";
 import { getClientIp, hashIp } from "@/lib/security/rate-limit";
+import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { logger } from "@/lib/logger";
 
 export type ApplyState = { error?: string; fieldErrors?: Record<string, string> };
@@ -45,6 +46,16 @@ export async function submitRequest(
     return { error: "Please check the highlighted fields and try again.", fieldErrors };
   }
 
+  const clientIp = await getClientIp();
+
+  const turnstileOk = await verifyTurnstileToken(
+    formData.get("cf-turnstile-response") as string | null,
+    clientIp
+  );
+  if (!turnstileOk) {
+    return { error: "Verification failed. Please try again." };
+  }
+
   const cvFile = formData.get("cv");
   if (!(cvFile instanceof File) || cvFile.size === 0) {
     return { error: "Please attach your CV (PDF or DOCX)." };
@@ -62,8 +73,8 @@ export async function submitRequest(
   // Abuse guards: cap submissions per email per day, and separately per IP
   // per hour (catches the same person spamming different emails, without
   // needing external rate-limit infra). Neither is bulletproof against a
-  // determined attacker — CAPTCHA is the next line of defence if abuse
-  // shows up in practice.
+  // determined attacker on its own, which is what the Turnstile check above
+  // is for.
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { count: emailCount, error: emailCountError } = await admin
     .from("requests")
@@ -81,7 +92,6 @@ export async function submitRequest(
     };
   }
 
-  const clientIp = await getClientIp();
   const ipHash = clientIp ? hashIp(clientIp) : null;
 
   if (ipHash) {

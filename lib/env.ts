@@ -79,6 +79,12 @@ const serverEnvSchema = z.object({
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean)
     ),
+
+  // Cloudflare Turnstile CAPTCHA on the public submission form. Both unset
+  // (the default until the client creates a Turnstile widget) disables the
+  // check entirely rather than failing closed — see app/(marketing)/apply.
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: optionalString(asciiString(z.string().min(1))),
+  TURNSTILE_SECRET_KEY: optionalString(asciiString(z.string().min(1))),
 });
 
 const publicEnvSchema = serverEnvSchema.pick({
@@ -86,6 +92,7 @@ const publicEnvSchema = serverEnvSchema.pick({
   NEXT_PUBLIC_SUPPORT_EMAIL: true,
   NEXT_PUBLIC_SUPABASE_URL: true,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: true,
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: true,
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
