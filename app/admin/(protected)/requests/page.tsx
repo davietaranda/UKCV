@@ -63,47 +63,83 @@ export default async function AdminRequestsPage({
           No requests match this filter.
         </p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>Job</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Match</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Below sm, a 7-column table forces horizontal scroll to read
+              anything — a stacked card per request is far easier to scan
+              with a thumb. Same data, two renderings. */}
+          <div className="flex flex-col gap-3 sm:hidden">
             {requests.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>
-                  <p className="font-medium">{r.customer_name}</p>
-                  <p className="text-xs text-muted-foreground">{r.email}</p>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{r.job_title ?? "—"}</TableCell>
-                <TableCell className="text-muted-foreground">{r.company ?? "—"}</TableCell>
-                <TableCell>
+              <div key={r.id} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4 text-sm">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{r.customer_name}</p>
+                    <p className="text-xs text-muted-foreground">{r.email}</p>
+                  </div>
                   <MatchScore score={r.match_score} />
-                </TableCell>
-                <TableCell>
+                </div>
+                <p className="text-muted-foreground">
+                  {r.job_title ?? "—"}
+                  {r.company ? ` · ${r.company}` : ""}
+                </p>
+                <div className="flex items-center justify-between gap-3">
                   <StatusBadge status={r.status} />
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {new Date(r.created_at).toLocaleDateString("en-GB")}
-                </TableCell>
-                <TableCell>
-                  <Link href={`/admin/requests/${r.id}`}>
-                    <Button variant="outline" size="sm">
-                      Open
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(r.created_at).toLocaleDateString("en-GB")}
+                  </span>
+                </div>
+                <Link href={`/admin/requests/${r.id}`}>
+                  <Button variant="outline" size="sm" className="mt-1 w-full">
+                    Open
+                  </Button>
+                </Link>
+              </div>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+
+          <div className="hidden sm:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Job</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Match</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {requests.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <p className="font-medium">{r.customer_name}</p>
+                      <p className="text-xs text-muted-foreground">{r.email}</p>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{r.job_title ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.company ?? "—"}</TableCell>
+                    <TableCell>
+                      <MatchScore score={r.match_score} />
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={r.status} />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(r.created_at).toLocaleDateString("en-GB")}
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/admin/requests/${r.id}`}>
+                        <Button variant="outline" size="sm">
+                          Open
+                        </Button>
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
 
       {totalPages > 1 ? (
