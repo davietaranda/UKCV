@@ -36,8 +36,10 @@
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
   --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
   --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 20px 40px -12px rgb(23 27 46 / 0.14);
 }
 
 @theme inline {
@@ -63,6 +65,9 @@
   --color-card: var(--color-card);
   --color-card-foreground: var(--color-card-foreground);
 
+  --radius-xl: var(--radius-xl);
+  --shadow-lg: var(--shadow-lg);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -70,4 +75,13 @@
 body {
   background: var(--color-background);
   color: var(--color-foreground);
+}
+
+/* Soft, low-contrast depth behind the hero — two large indigo blobs, never
+ * strong enough to affect text contrast. Applied as a background so it sits
+ * behind content without needing an extra DOM node. */
+.bg-hero-glow {
+  background-image:
+    radial-gradient(560px circle at 12% 8%, rgb(43 58 145 / 0.08), transparent 60%),
+    radial-gradient(480px circle at 88% 0%, rgb(43 58 145 / 0.06), transparent 55%);
 }

@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
+import { ArrowRight, CheckCircle2, UploadCloud } from "lucide-react";
 import { submitRequest, previewBuiltCv, type ApplyState } from "@/app/(marketing)/apply/actions";
 import {
   CvBuilderFields,
@@ -40,6 +41,7 @@ export function ApplyForm({
     PACKAGES.find((p) => p.id === initialPackageId)?.id ?? PACKAGES[0].id
   );
   const [cvMode, setCvMode] = useState<"upload" | "build">("upload");
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [builtCvDraft, setBuiltCvDraft] = useState<BuiltCvDraft>(emptyBuiltCvDraft);
   const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -93,17 +95,21 @@ export function ApplyForm({
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold">Your CV</h2>
 
-        <div className="flex gap-2" role="tablist" aria-label="How would you like to provide your CV?">
+        <div
+          className="inline-flex w-fit gap-1 rounded-full border border-border bg-muted p-1"
+          role="tablist"
+          aria-label="How would you like to provide your CV?"
+        >
           <button
             type="button"
             role="tab"
             aria-selected={cvMode === "upload"}
             onClick={() => setCvMode("upload")}
             className={cn(
-              "rounded-md border px-4 py-2 text-sm font-medium transition-colors",
+              "rounded-full px-4 py-1.5 text-sm font-medium transition-all",
               cvMode === "upload"
-                ? "border-accent bg-accent-muted text-foreground"
-                : "border-border text-muted-foreground hover:bg-muted"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             I have a CV to upload
@@ -114,10 +120,10 @@ export function ApplyForm({
             aria-selected={cvMode === "build"}
             onClick={() => setCvMode("build")}
             className={cn(
-              "rounded-md border px-4 py-2 text-sm font-medium transition-colors",
+              "rounded-full px-4 py-1.5 text-sm font-medium transition-all",
               cvMode === "build"
-                ? "border-accent bg-accent-muted text-foreground"
-                : "border-border text-muted-foreground hover:bg-muted"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             I don&rsquo;t have a CV yet
@@ -127,14 +133,38 @@ export function ApplyForm({
         {cvMode === "upload" ? (
           <div>
             <Label htmlFor="cv">Upload your CV (PDF or DOCX, max 8MB)</Label>
-            <input
-              id="cv"
-              name="cv"
-              type="file"
-              required={cvMode === "upload"}
-              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="block w-full rounded-md border border-border bg-background text-sm file:mr-4 file:rounded-md file:border-0 file:bg-muted file:px-4 file:py-2 file:text-sm file:font-medium"
-            />
+            <div
+              className={cn(
+                "relative flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-8 text-center transition-colors",
+                selectedFileName
+                  ? "border-accent/50 bg-accent-muted/40"
+                  : "border-border bg-muted/40 hover:border-accent/40 hover:bg-accent-muted/40"
+              )}
+            >
+              {selectedFileName ? (
+                <>
+                  <CheckCircle2 className="h-6 w-6 text-accent" aria-hidden="true" />
+                  <p className="text-sm font-medium text-foreground">{selectedFileName}</p>
+                  <p className="text-xs text-muted-foreground">Click to choose a different file</p>
+                </>
+              ) : (
+                <>
+                  <UploadCloud className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-accent">Click to choose a file</span> or drag it here
+                  </p>
+                </>
+              )}
+              <input
+                id="cv"
+                name="cv"
+                type="file"
+                required={cvMode === "upload"}
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={(e) => setSelectedFileName(e.target.files?.[0]?.name ?? null)}
+                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              />
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
@@ -237,22 +267,25 @@ export function ApplyForm({
             <label
               key={pkg.id}
               className={cn(
-                "flex cursor-pointer flex-col gap-2 rounded-lg border p-4 text-sm transition-colors",
+                "relative flex cursor-pointer flex-col gap-2 rounded-xl border p-4 text-sm transition-all",
                 selectedPackage === pkg.id
-                  ? "border-accent bg-accent-muted"
-                  : "border-border hover:bg-muted"
+                  ? "border-accent bg-accent-muted shadow-sm ring-1 ring-accent"
+                  : "border-border hover:border-accent/30 hover:shadow-sm"
               )}
             >
-              <div className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="packageId"
-                  value={pkg.id}
-                  checked={selectedPackage === pkg.id}
-                  onChange={() => setSelectedPackage(pkg.id)}
-                  className="accent-accent"
-                />
+              <input
+                type="radio"
+                name="packageId"
+                value={pkg.id}
+                checked={selectedPackage === pkg.id}
+                onChange={() => setSelectedPackage(pkg.id)}
+                className="sr-only"
+              />
+              <div className="flex items-center justify-between gap-2">
                 <span className="font-medium">{pkg.name}</span>
+                {selectedPackage === pkg.id ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+                ) : null}
               </div>
               <p className="text-muted-foreground">{pkg.description}</p>
             </label>
@@ -288,8 +321,9 @@ export function ApplyForm({
         </>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={isPending}>
+      <Button type="submit" size="lg" disabled={isPending} className="gap-2">
         {isPending ? "Submitting..." : "Submit my request"}
+        {isPending ? null : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
       </Button>
     </form>
   );
