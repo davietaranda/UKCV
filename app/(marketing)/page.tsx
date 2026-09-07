@@ -59,8 +59,18 @@ export default async function HomePage() {
         </p>
       </section>
 
+      {/* The form itself — visible right on the landing page */}
+      <section id="apply" className="border-t border-border px-6 py-16">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-center text-2xl font-semibold">Get started</h2>
+          <div className="mt-8">
+            <ApplyForm turnstileSiteKey={NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
+          </div>
+        </div>
+      </section>
+
       {/* How it works */}
-      <section id="how-it-works" className="border-y border-border bg-muted px-6 py-10">
+      <section id="how-it-works" className="border-t border-border bg-muted px-6 py-10">
         <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3">
           {HOW_IT_WORKS.map((item) => (
             <div key={item.step}>
@@ -72,18 +82,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* The form itself — visible right on the landing page */}
-      <section id="apply" className="px-6 py-16">
-        <div className="mx-auto max-w-3xl">
-          <h2 className="text-center text-2xl font-semibold">Get started</h2>
-          <div className="mt-8">
-            <ApplyForm turnstileSiteKey={NEXT_PUBLIC_TURNSTILE_SITE_KEY} />
-          </div>
-        </div>
-      </section>
-
       {/* FAQ */}
-      <section className="border-t border-border bg-muted px-6 py-16">
+      <section className="bg-muted px-6 py-16">
         <div className="mx-auto max-w-3xl">
           <h2 className="text-center text-2xl font-semibold">Frequently asked questions</h2>
           <div className="mt-8 flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
