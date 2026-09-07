@@ -15,13 +15,7 @@ export function SiteHeader() {
           >
             How it works
           </Link>
-          <Link
-            href="/#packages"
-            className="hidden text-sm text-muted-foreground hover:text-foreground sm:inline"
-          >
-            Packages
-          </Link>
-          <Link href="/apply">
+          <Link href="/#apply">
             <Button size="sm">Get My CV Tailored</Button>
           </Link>
         </nav>
