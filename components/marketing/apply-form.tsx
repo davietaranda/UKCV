@@ -106,13 +106,14 @@ export function ApplyForm({
             aria-selected={cvMode === "upload"}
             onClick={() => setCvMode("upload")}
             className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium transition-all",
+              "whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-all sm:px-4 sm:text-sm",
               cvMode === "upload"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            I have a CV to upload
+            <span className="sm:hidden">Upload CV</span>
+            <span className="hidden sm:inline">I have a CV to upload</span>
           </button>
           <button
             type="button"
@@ -120,13 +121,14 @@ export function ApplyForm({
             aria-selected={cvMode === "build"}
             onClick={() => setCvMode("build")}
             className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-medium transition-all",
+              "whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-all sm:px-4 sm:text-sm",
               cvMode === "build"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            I don&rsquo;t have a CV yet
+            <span className="sm:hidden">No CV yet</span>
+            <span className="hidden sm:inline">I don&rsquo;t have a CV yet</span>
           </button>
         </div>
 
