@@ -39,6 +39,10 @@ export async function generateStructuredJSON<T>(params: {
   systemInstruction: string;
   prompt: string;
   schema: z.ZodType<T>;
+  /** Left unset elsewhere to use Gemini's own default (tuned for general
+   * use); pass a lower value for stages where consistent, plain
+   * professional writing matters more than phrasing variety. */
+  temperature?: number;
 }): Promise<{ data: T; usage: AIUsage }> {
   const env = getServerEnv();
   const model = getClient().getGenerativeModel({
@@ -47,6 +51,7 @@ export async function generateStructuredJSON<T>(params: {
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: zodToGeminiSchema(params.schema),
+      ...(params.temperature !== undefined ? { temperature: params.temperature } : {}),
     },
   });
 
@@ -122,7 +127,15 @@ export class GeminiProvider implements AIProvider {
       JSON.stringify(job),
       JSON.stringify(matching)
     );
-    return generateStructuredJSON({ systemInstruction, prompt, schema: tailoredCVSchema });
+    // Lower than Gemini's default: this is professional CV copy, not
+    // creative writing — favour consistent, plain, evidence-grounded
+    // phrasing over stylistic variety.
+    return generateStructuredJSON({
+      systemInstruction,
+      prompt,
+      schema: tailoredCVSchema,
+      temperature: 0.35,
+    });
   }
 
   async generateCoverLetter(
