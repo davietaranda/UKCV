@@ -31,3 +31,62 @@ export const submissionSchema = z.object({
 });
 
 export type SubmissionInput = z.infer<typeof submissionSchema>;
+
+/**
+ * The "build a CV from scratch" path (for applicants with no existing CV
+ * file) — a deliberately smaller set of sections than the full AI-extracted
+ * StructuredCV shape (lib/ai/schemas.ts), matching what a standard resume
+ * builder asks for. See lib/documents/cv-builder.ts for how this maps into
+ * both a rendered PDF and the StructuredCV shape the AI pipeline expects.
+ */
+export const builtCvExperienceSchema = z.object({
+  jobTitle: z.string().trim().min(1, "Enter a job title.").max(200),
+  employer: z.string().trim().min(1, "Enter an employer.").max(200),
+  startDate: z.string().trim().max(50).optional().or(z.literal("")),
+  endDate: z.string().trim().max(50).optional().or(z.literal("")),
+  bullets: z.array(z.string().trim().min(1)).max(20).default([]),
+});
+
+export const builtCvEducationSchema = z.object({
+  qualification: z.string().trim().min(1, "Enter a qualification.").max(200),
+  institution: z.string().trim().min(1, "Enter an institution.").max(200),
+  date: z.string().trim().max(50).optional().or(z.literal("")),
+});
+
+export const builtCvAwardSchema = z.object({
+  title: z.string().trim().min(1, "Enter a title.").max(200),
+  date: z.string().trim().max(50).optional().or(z.literal("")),
+});
+
+export const builtCvSchema = z
+  .object({
+    location: z.string().trim().max(200).optional().or(z.literal("")),
+    portfolioUrl: z.string().trim().max(300).optional().or(z.literal("")),
+    professionalProfile: z.string().trim().max(2000).optional().or(z.literal("")),
+    skills: z.array(z.string().trim().min(1)).max(60).default([]),
+    experience: z.array(builtCvExperienceSchema).max(20).default([]),
+    education: z.array(builtCvEducationSchema).max(10).default([]),
+    certifications: z.array(z.string().trim().min(1)).max(30).default([]),
+    // "Awards/Recognitions/Volunteer Work" per Indeed's own entry-level/
+    // recent-grad resume template — the natural audience for this builder.
+    awards: z.array(builtCvAwardSchema).max(20).default([]),
+  })
+  .superRefine((v, ctx) => {
+    const hasContent =
+      (v.professionalProfile ?? "").length > 0 ||
+      v.skills.length > 0 ||
+      v.experience.length > 0 ||
+      v.education.length > 0;
+    if (!hasContent) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "Add at least some CV content (a summary, one job, one qualification, or a skill) before submitting.",
+      });
+    }
+  });
+
+export type BuiltCvExperience = z.infer<typeof builtCvExperienceSchema>;
+export type BuiltCvEducation = z.infer<typeof builtCvEducationSchema>;
+export type BuiltCvAward = z.infer<typeof builtCvAwardSchema>;
+export type BuiltCv = z.infer<typeof builtCvSchema>;

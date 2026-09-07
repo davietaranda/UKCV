@@ -7,6 +7,7 @@ import { withAIRunLogging } from "@/lib/ai/logging";
 import { getObjectBytes } from "@/lib/storage/r2";
 import { extractTextFromCv } from "@/lib/documents/extract-text";
 import { logger } from "@/lib/logger";
+import type { StructuredCV } from "@/lib/ai/schemas";
 
 export interface PipelineResult {
   error?: string;
@@ -49,47 +50,56 @@ export async function runRequestAnalysis(requestId: string): Promise<PipelineRes
 
   const provider = await getAIProvider();
 
-  let extractedText = cvDocument.extracted_text;
-  if (!extractedText) {
+  // A CV built via the "no resume yet" form (app/(marketing)/apply/actions.ts)
+  // already has structured_cv populated at submission time from data the
+  // applicant typed directly — re-parsing the PDF we rendered from that same
+  // data and re-extracting it with AI would be strictly lossier, not more
+  // accurate, so skip both steps entirely in that case.
+  let structuredCV: StructuredCV;
+  if (cvDocument.structured_cv) {
+    structuredCV = cvDocument.structured_cv as unknown as StructuredCV;
+  } else {
+    let extractedText = cvDocument.extracted_text;
+    if (!extractedText) {
+      try {
+        const bytes = await getObjectBytes(cvDocument.original_file_path);
+        const extension = cvDocument.original_filename.toLowerCase().endsWith(".pdf")
+          ? "pdf"
+          : "docx";
+        extractedText = await extractTextFromCv(bytes, extension);
+        await supabase
+          .from("cv_documents")
+          .update({ extracted_text: extractedText })
+          .eq("id", cvDocument.id);
+      } catch (err) {
+        logger.error("CV text extraction failed", {
+          requestId,
+          message: err instanceof Error ? err.message : "unknown",
+        });
+        return { error: "Could not extract text from the CV file." };
+      }
+    }
+
+    if (!extractedText || extractedText.trim().length < 20) {
+      return { error: "The CV file appears to contain no readable text." };
+    }
+
     try {
-      const bytes = await getObjectBytes(cvDocument.original_file_path);
-      const extension = cvDocument.original_filename.toLowerCase().endsWith(".pdf")
-        ? "pdf"
-        : "docx";
-      extractedText = await extractTextFromCv(bytes, extension);
+      structuredCV = await withAIRunLogging(
+        { requestId, operation: "cv_extraction", model: env.GEMINI_MODEL },
+        () => provider.extractCV(extractedText!)
+      );
       await supabase
         .from("cv_documents")
-        .update({ extracted_text: extractedText })
+        .update({ structured_cv: structuredCV })
         .eq("id", cvDocument.id);
     } catch (err) {
-      logger.error("CV text extraction failed", {
+      logger.error("CV extraction failed", {
         requestId,
         message: err instanceof Error ? err.message : "unknown",
       });
-      return { error: "Could not extract text from the CV file." };
+      return { error: "AI CV extraction failed. Check the AI usage log for details." };
     }
-  }
-
-  if (!extractedText || extractedText.trim().length < 20) {
-    return { error: "The CV file appears to contain no readable text." };
-  }
-
-  let structuredCV;
-  try {
-    structuredCV = await withAIRunLogging(
-      { requestId, operation: "cv_extraction", model: env.GEMINI_MODEL },
-      () => provider.extractCV(extractedText!)
-    );
-    await supabase
-      .from("cv_documents")
-      .update({ structured_cv: structuredCV })
-      .eq("id", cvDocument.id);
-  } catch (err) {
-    logger.error("CV extraction failed", {
-      requestId,
-      message: err instanceof Error ? err.message : "unknown",
-    });
-    return { error: "AI CV extraction failed. Check the AI usage log for details." };
   }
 
   let jobAnalysis;

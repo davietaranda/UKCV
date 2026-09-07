@@ -97,6 +97,13 @@ export default async function AdminRequestDetailPage({
             <pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
               {cvDocument.extracted_text}
             </pre>
+          ) : cvDocument.structured_cv ? (
+            // Built via the "no CV yet" form (components/marketing/cv-builder-fields.tsx):
+            // structured_cv came directly from the applicant, so there's no raw text to
+            // extract and lib/ai/pipeline.ts's Run AI Analysis skips that step entirely.
+            <p className="text-sm text-muted-foreground">
+              Built directly from the applicant&rsquo;s CV form — no text extraction needed.
+            </p>
           ) : (
             <EmptyState
               title="Not yet extracted"
@@ -105,7 +112,9 @@ export default async function AdminRequestDetailPage({
           )}
           {cvDocument.structured_cv ? (
             <div>
-              <h3 className="mb-2 text-sm font-medium">Structured CV (AI-extracted)</h3>
+              <h3 className="mb-2 text-sm font-medium">
+                Structured CV {cvDocument.extracted_text ? "(AI-extracted)" : "(from CV builder)"}
+              </h3>
               <JsonPreview value={cvDocument.structured_cv} />
             </div>
           ) : null}

@@ -1,9 +1,15 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
-import { submitRequest, type ApplyState } from "@/app/(marketing)/apply/actions";
+import { submitRequest, previewBuiltCv, type ApplyState } from "@/app/(marketing)/apply/actions";
+import {
+  CvBuilderFields,
+  emptyBuiltCvDraft,
+  draftToBuiltCv,
+  type BuiltCvDraft,
+} from "@/components/marketing/cv-builder-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +20,13 @@ import { PACKAGES } from "@/lib/packages";
 import { cn } from "@/lib/utils";
 
 const initialState: ApplyState = {};
+
+function base64ToBlobUrl(base64: string, type: string): string {
+  const byteChars = atob(base64);
+  const bytes = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+  return URL.createObjectURL(new Blob([bytes], { type }));
+}
 
 export function ApplyForm({
   initialPackageId,
@@ -26,10 +39,48 @@ export function ApplyForm({
   const [selectedPackage, setSelectedPackage] = useState(
     PACKAGES.find((p) => p.id === initialPackageId)?.id ?? PACKAGES[0].id
   );
+  const [cvMode, setCvMode] = useState<"upload" | "build">("upload");
+  const [builtCvDraft, setBuiltCvDraft] = useState<BuiltCvDraft>(emptyBuiltCvDraft);
+  const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const fieldError = (name: string) => state.fieldErrors?.[name];
 
+  async function handlePreview() {
+    // Must open the tab synchronously, in the same tick as the click — a
+    // window.open() called after an `await` (i.e. once the server action
+    // resolves) is indistinguishable from an unsolicited popup to most
+    // browsers and gets silently blocked. Opened blank, then navigated to
+    // the real blob URL once the PDF comes back.
+    const previewTab = window.open("about:blank", "_blank");
+    setPreviewStatus("loading");
+    setPreviewError(null);
+    const fd = new FormData(formRef.current ?? undefined);
+    const result = await previewBuiltCv(draftToBuiltCv(builtCvDraft), {
+      customerName: fd.get("customerName"),
+      email: fd.get("email"),
+      phone: fd.get("phone"),
+    });
+    if ("error" in result) {
+      setPreviewStatus("error");
+      setPreviewError(result.error);
+      previewTab?.close();
+      return;
+    }
+    setPreviewStatus("idle");
+    const url = base64ToBlobUrl(result.pdf, "application/pdf");
+    if (previewTab) {
+      previewTab.location.href = url;
+    } else {
+      // Popup was blocked even on the synchronous open (very strict blocker
+      // settings) — fall back to navigating the current tab so the preview
+      // is still reachable, rather than silently doing nothing.
+      window.location.href = url;
+    }
+  }
+
   return (
-    <form action={formAction} className="flex flex-col gap-10" noValidate>
+    <form ref={formRef} action={formAction} className="flex flex-col gap-10" noValidate>
       {state.error ? <Alert variant="danger">{state.error}</Alert> : null}
 
       {/* Honeypot — real users never see or fill this in. Any non-empty
@@ -41,17 +92,75 @@ export function ApplyForm({
 
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold">Your CV</h2>
-        <div>
-          <Label htmlFor="cv">Upload your CV (PDF or DOCX, max 8MB)</Label>
-          <input
-            id="cv"
-            name="cv"
-            type="file"
-            required
-            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            className="block w-full rounded-md border border-border bg-background text-sm file:mr-4 file:rounded-md file:border-0 file:bg-muted file:px-4 file:py-2 file:text-sm file:font-medium"
-          />
+
+        <div className="flex gap-2" role="tablist" aria-label="How would you like to provide your CV?">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cvMode === "upload"}
+            onClick={() => setCvMode("upload")}
+            className={cn(
+              "rounded-md border px-4 py-2 text-sm font-medium transition-colors",
+              cvMode === "upload"
+                ? "border-accent bg-accent-muted text-foreground"
+                : "border-border text-muted-foreground hover:bg-muted"
+            )}
+          >
+            I have a CV to upload
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={cvMode === "build"}
+            onClick={() => setCvMode("build")}
+            className={cn(
+              "rounded-md border px-4 py-2 text-sm font-medium transition-colors",
+              cvMode === "build"
+                ? "border-accent bg-accent-muted text-foreground"
+                : "border-border text-muted-foreground hover:bg-muted"
+            )}
+          >
+            I don&rsquo;t have a CV yet
+          </button>
         </div>
+
+        {cvMode === "upload" ? (
+          <div>
+            <Label htmlFor="cv">Upload your CV (PDF or DOCX, max 8MB)</Label>
+            <input
+              id="cv"
+              name="cv"
+              type="file"
+              required={cvMode === "upload"}
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="block w-full rounded-md border border-border bg-background text-sm file:mr-4 file:rounded-md file:border-0 file:bg-muted file:px-4 file:py-2 file:text-sm file:font-medium"
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              No CV yet? Fill in what you can below and we&rsquo;ll build you a clean,
+              ATS-friendly CV to start from — an admin can refine it further before
+              anything is delivered.
+            </p>
+            <CvBuilderFields value={builtCvDraft} onChange={setBuiltCvDraft} />
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handlePreview}
+                disabled={previewStatus === "loading"}
+              >
+                {previewStatus === "loading" ? "Generating preview..." : "Preview my CV (PDF)"}
+              </Button>
+              {previewStatus === "error" && previewError ? (
+                <span className="text-sm text-danger">{previewError}</span>
+              ) : null}
+            </div>
+            <input type="hidden" name="builtCv" value={JSON.stringify(draftToBuiltCv(builtCvDraft))} />
+          </div>
+        )}
+        <input type="hidden" name="cvMode" value={cvMode} />
       </section>
 
       <section className="flex flex-col gap-4">

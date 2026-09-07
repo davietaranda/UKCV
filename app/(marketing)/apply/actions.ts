@@ -2,12 +2,14 @@
 
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
-import { submissionSchema } from "@/lib/validation/request";
+import { submissionSchema, builtCvSchema, type BuiltCv } from "@/lib/validation/request";
 import { validateCvFile, sanitizeFilename } from "@/lib/validation/file";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadObject, originalCvKey } from "@/lib/storage/r2";
 import { getClientIp, hashIp } from "@/lib/security/rate-limit";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
+import { renderBuiltCvPdf, builtCvToStructuredCV } from "@/lib/documents/cv-builder";
+import type { StructuredCV } from "@/lib/ai/schemas";
 import { logger } from "@/lib/logger";
 
 export type ApplyState = { error?: string; fieldErrors?: Record<string, string> };
@@ -56,16 +58,66 @@ export async function submitRequest(
     return { error: "Verification failed. Please try again." };
   }
 
-  const cvFile = formData.get("cv");
-  if (!(cvFile instanceof File) || cvFile.size === 0) {
-    return { error: "Please attach your CV (PDF or DOCX)." };
-  }
+  // Two ways to provide a CV: upload an existing file, or build one from
+  // scratch via the structured form (for applicants with no CV yet) — see
+  // components/marketing/apply-form.tsx and lib/documents/cv-builder.ts.
+  const cvMode = formData.get("cvMode") === "build" ? "build" : "upload";
 
-  const arrayBuffer = await cvFile.arrayBuffer();
-  const bytes = new Uint8Array(arrayBuffer);
-  const fileValidation = validateCvFile(cvFile, bytes);
-  if (!fileValidation.valid) {
-    return { error: fileValidation.error };
+  let cvBytes: Uint8Array;
+  let cvContentType: string;
+  let cvFilename: string;
+  let prebuiltStructuredCV: StructuredCV | undefined;
+
+  if (cvMode === "build") {
+    let builtCvInput: unknown;
+    try {
+      builtCvInput = JSON.parse(String(formData.get("builtCv") ?? ""));
+    } catch {
+      return { error: "Something went wrong reading your CV details. Please try again." };
+    }
+    const builtCvParsed = builtCvSchema.safeParse(builtCvInput);
+    if (!builtCvParsed.success) {
+      return {
+        error: builtCvParsed.error.issues[0]?.message ?? "Please check your CV details and try again.",
+      };
+    }
+
+    const contact = {
+      customerName: String(formData.get("customerName") ?? ""),
+      email: String(formData.get("email") ?? ""),
+      phone: (formData.get("phone") as string) || null,
+    };
+
+    let pdfBuffer: Buffer;
+    try {
+      pdfBuffer = await renderBuiltCvPdf(builtCvParsed.data, contact);
+    } catch (err) {
+      logger.error("Built CV rendering failed", {
+        message: err instanceof Error ? err.message : "unknown",
+      });
+      return { error: "We couldn't generate your CV. Please try again." };
+    }
+
+    cvBytes = pdfBuffer;
+    cvContentType = "application/pdf";
+    cvFilename = `${sanitizeFilename(contact.customerName || "candidate")}-cv.pdf`;
+    prebuiltStructuredCV = builtCvToStructuredCV(builtCvParsed.data, contact);
+  } else {
+    const cvFile = formData.get("cv");
+    if (!(cvFile instanceof File) || cvFile.size === 0) {
+      return { error: "Please attach your CV (PDF or DOCX)." };
+    }
+
+    const arrayBuffer = await cvFile.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    const fileValidation = validateCvFile(cvFile, bytes);
+    if (!fileValidation.valid) {
+      return { error: fileValidation.error };
+    }
+
+    cvBytes = bytes;
+    cvContentType = cvFile.type || "application/octet-stream";
+    cvFilename = sanitizeFilename(cvFile.name);
   }
 
   const admin = createAdminClient();
@@ -112,11 +164,10 @@ export async function submitRequest(
   }
 
   const requestId = randomUUID();
-  const safeFilename = sanitizeFilename(cvFile.name);
-  const objectKey = originalCvKey(requestId, safeFilename);
+  const objectKey = originalCvKey(requestId, cvFilename);
 
   try {
-    await uploadObject(objectKey, Buffer.from(bytes), cvFile.type || "application/octet-stream");
+    await uploadObject(objectKey, Buffer.from(cvBytes), cvContentType);
   } catch (err) {
     logger.error("CV upload to storage failed", {
       requestId,
@@ -148,7 +199,8 @@ export async function submitRequest(
   const { error: cvInsertError } = await admin.from("cv_documents").insert({
     request_id: requestId,
     original_file_path: objectKey,
-    original_filename: safeFilename,
+    original_filename: cvFilename,
+    ...(prebuiltStructuredCV ? { structured_cv: prebuiltStructuredCV } : {}),
   });
 
   if (cvInsertError) {
@@ -163,3 +215,44 @@ export async function submitRequest(
 
   redirect(`/apply/confirmation?ref=${requestId.slice(0, 8)}`);
 }
+
+export type PreviewBuiltCvResult = { pdf: string } | { error: string };
+
+/**
+ * Renders a preview PDF for the "build a CV" form without saving anything —
+ * called directly from the client (components/marketing/apply-form.tsx),
+ * not via a form action. Deliberately looser validation than submitRequest
+ * (e.g. no consent/job-description checks): this only needs enough to
+ * render a document, since nothing here is persisted.
+ */
+export async function previewBuiltCv(
+  builtCvInput: unknown,
+  contactInput: { customerName: unknown; email: unknown; phone: unknown }
+): Promise<PreviewBuiltCvResult> {
+  const builtCvParsed = builtCvSchema.safeParse(builtCvInput);
+  if (!builtCvParsed.success) {
+    return { error: builtCvParsed.error.issues[0]?.message ?? "Please check your CV details." };
+  }
+
+  const contact = {
+    customerName: String(contactInput.customerName ?? "").trim() || "Your Name",
+    email: String(contactInput.email ?? "").trim(),
+    phone: String(contactInput.phone ?? "").trim() || null,
+  };
+
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await renderBuiltCvPdf(builtCvParsed.data, contact);
+  } catch (err) {
+    logger.error("Built CV preview rendering failed", {
+      message: err instanceof Error ? err.message : "unknown",
+    });
+    return { error: "We couldn't generate a preview. Please try again." };
+  }
+
+  return { pdf: pdfBuffer.toString("base64") };
+}
+
+// Re-exported so the client form can share the exact same shape it posts as
+// the "builtCv" hidden field, without importing a server-only module.
+export type { BuiltCv };

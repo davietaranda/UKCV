@@ -98,6 +98,41 @@ function Bullet({ text }: { text: string }) {
 }
 
 export function CvPdfDocument({ content }: { content: CvContent }) {
+  const experienceSection =
+    content.experience.length > 0 ? (
+      <Section title="Professional Experience">
+        {content.experience.map((exp, i) => (
+          <View key={i} style={styles.entry} wrap={false}>
+            <View style={styles.entryHeaderRow}>
+              <Text style={styles.entryTitle}>
+                {exp.jobTitle}
+                {exp.employer ? `, ${exp.employer}` : ""}
+              </Text>
+              {exp.dateRange ? <Text style={styles.entryDate}>{exp.dateRange}</Text> : null}
+            </View>
+            {exp.bullets.map((b, j) => (
+              <Bullet key={j} text={b} />
+            ))}
+          </View>
+        ))}
+      </Section>
+    ) : null;
+
+  const educationSection =
+    content.education.length > 0 ? (
+      <Section title="Education">
+        {content.education.map((ed, i) => (
+          <View key={i} style={styles.entry} wrap={false}>
+            <View style={styles.entryHeaderRow}>
+              <Text style={styles.entryTitle}>{ed.qualification}</Text>
+              {ed.date ? <Text style={styles.entryDate}>{ed.date}</Text> : null}
+            </View>
+            <Text style={styles.entrySubtitle}>{ed.institution}</Text>
+          </View>
+        ))}
+      </Section>
+    ) : null;
+
   return (
     <Document title={`${content.name} - CV`}>
       <Page size="A4" style={styles.page}>
@@ -118,38 +153,8 @@ export function CvPdfDocument({ content }: { content: CvContent }) {
           </Section>
         ) : null}
 
-        {content.experience.length > 0 ? (
-          <Section title="Professional Experience">
-            {content.experience.map((exp, i) => (
-              <View key={i} style={styles.entry} wrap={false}>
-                <View style={styles.entryHeaderRow}>
-                  <Text style={styles.entryTitle}>
-                    {exp.jobTitle}
-                    {exp.employer ? `, ${exp.employer}` : ""}
-                  </Text>
-                  {exp.dateRange ? <Text style={styles.entryDate}>{exp.dateRange}</Text> : null}
-                </View>
-                {exp.bullets.map((b, j) => (
-                  <Bullet key={j} text={b} />
-                ))}
-              </View>
-            ))}
-          </Section>
-        ) : null}
-
-        {content.education.length > 0 ? (
-          <Section title="Education">
-            {content.education.map((ed, i) => (
-              <View key={i} style={styles.entry} wrap={false}>
-                <View style={styles.entryHeaderRow}>
-                  <Text style={styles.entryTitle}>{ed.qualification}</Text>
-                  {ed.date ? <Text style={styles.entryDate}>{ed.date}</Text> : null}
-                </View>
-                <Text style={styles.entrySubtitle}>{ed.institution}</Text>
-              </View>
-            ))}
-          </Section>
-        ) : null}
+        {content.educationFirst ? educationSection : experienceSection}
+        {content.educationFirst ? experienceSection : educationSection}
 
         {content.certifications.length > 0 ? (
           <Section title="Certifications">

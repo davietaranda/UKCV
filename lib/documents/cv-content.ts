@@ -9,6 +9,12 @@ export interface CvContent {
   education: Array<{ qualification: string; institution: string; date: string | null }>;
   certifications: string[];
   additionalInfo: string[];
+  /** Entry-level/recent-grad convention (Indeed's own template for that
+   * audience) leads with Education before Experience, since work history is
+   * limited — the opposite of the standard experienced-hire order this
+   * layout otherwise uses. Set by lib/documents/cv-builder.ts; left unset
+   * (Experience-first) for the AI-tailored path. */
+  educationFirst?: boolean;
 }
 
 function formatDateRange(start: string | null, end: string | null): string {
