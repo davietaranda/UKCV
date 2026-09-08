@@ -16,11 +16,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const { id } = await params;
-  const typeParam = new URL(request.url).searchParams.get("type") ?? "original";
+  const url = new URL(request.url);
+  const typeParam = url.searchParams.get("type") ?? "original";
   if (!FILE_TYPES.includes(typeParam as FileType)) {
     return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
   }
   const type = typeParam as FileType;
+  // ?preview=1 renders the file in the browser (works for PDFs) instead of
+  // saving straight to disk — see the Preview links next to Download.
+  const disposition = url.searchParams.get("preview") === "1" ? "inline" : "attachment";
 
   const supabase = await createClient();
   const objectKey = await resolveObjectKey(supabase, id, type);
@@ -29,7 +33,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "File not found for this request" }, { status: 404 });
   }
 
-  const signedUrl = await getSignedDownloadUrl(objectKey, 120);
+  const signedUrl = await getSignedDownloadUrl(objectKey, 120, disposition);
   return NextResponse.redirect(signedUrl);
 }
 

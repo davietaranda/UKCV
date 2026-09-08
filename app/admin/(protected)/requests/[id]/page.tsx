@@ -102,11 +102,24 @@ export default async function AdminRequestDetailPage({
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">{cvDocument.original_filename}</p>
-            <a href={`/admin/requests/${request.id}/download`} target="_blank" rel="noreferrer">
-              <Button variant="outline" size="sm">
-                Download original
-              </Button>
-            </a>
+            <div className="flex gap-2">
+              {cvDocument.original_filename?.toLowerCase().endsWith(".pdf") ? (
+                <a
+                  href={`/admin/requests/${request.id}/download?preview=1`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Button variant="ghost" size="sm">
+                    Preview
+                  </Button>
+                </a>
+              ) : null}
+              <a href={`/admin/requests/${request.id}/download`} target="_blank" rel="noreferrer">
+                <Button variant="outline" size="sm">
+                  Download original
+                </Button>
+              </a>
+            </div>
           </div>
           {cvDocument.extracted_text ? (
             <pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
@@ -204,6 +217,7 @@ export default async function AdminRequestDetailPage({
                     label="PDF"
                     available={!!outputs.cv_pdf_path}
                     href={`/admin/requests/${request.id}/download?type=cv_pdf`}
+                    previewHref={`/admin/requests/${request.id}/download?type=cv_pdf&preview=1`}
                   />
                 </div>
                 <div className="flex-1">
@@ -263,6 +277,7 @@ export default async function AdminRequestDetailPage({
             label="Cover Letter (PDF)"
             available={!!outputs.cover_letter_path}
             href={`/admin/requests/${request.id}/download?type=cover_letter`}
+            previewHref={`/admin/requests/${request.id}/download?type=cover_letter&preview=1`}
           />
           <RegenerateCoverLetterButton requestId={request.id} />
           <pre className="whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
@@ -313,11 +328,17 @@ export default async function AdminRequestDetailPage({
               label="Original CV"
               available
               href={`/admin/requests/${request.id}/download`}
+              previewHref={
+                cvDocument?.original_filename?.toLowerCase().endsWith(".pdf")
+                  ? `/admin/requests/${request.id}/download?preview=1`
+                  : undefined
+              }
             />
             <FileRow
               label="Tailored CV (PDF)"
               available={!!outputs?.cv_pdf_path}
               href={`/admin/requests/${request.id}/download?type=cv_pdf`}
+              previewHref={`/admin/requests/${request.id}/download?type=cv_pdf&preview=1`}
             />
             <FileRow
               label="Tailored CV (DOCX)"
@@ -328,6 +349,7 @@ export default async function AdminRequestDetailPage({
               label="Cover Letter (PDF)"
               available={!!outputs?.cover_letter_path}
               href={`/admin/requests/${request.id}/download?type=cover_letter`}
+              previewHref={`/admin/requests/${request.id}/download?type=cover_letter&preview=1`}
             />
           </div>
         </div>
@@ -376,20 +398,34 @@ function FileRow({
   label,
   available,
   href,
+  previewHref,
 }: {
   label: string;
   available: boolean;
   href?: string;
+  /** Set only for files a browser can actually render inline (PDFs) — DOCX
+   * has no native browser renderer, so there's no meaningful preview for
+   * it, just Download. */
+  previewHref?: string;
 }) {
   return (
     <div className="flex items-center justify-between rounded-md border border-border px-4 py-3">
       <span className="text-sm">{label}</span>
       {available && href ? (
-        <a href={href} target="_blank" rel="noreferrer">
-          <Button variant="outline" size="sm">
-            Download
-          </Button>
-        </a>
+        <div className="flex gap-2">
+          {previewHref ? (
+            <a href={previewHref} target="_blank" rel="noreferrer">
+              <Button variant="ghost" size="sm">
+                Preview
+              </Button>
+            </a>
+          ) : null}
+          <a href={href} target="_blank" rel="noreferrer">
+            <Button variant="outline" size="sm">
+              Download
+            </Button>
+          </a>
+        </div>
       ) : (
         <span className="text-sm text-muted-foreground">Not generated yet</span>
       )}

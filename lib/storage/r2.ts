@@ -68,15 +68,24 @@ export async function getObjectBytes(key: string): Promise<Uint8Array> {
 }
 
 /** Returns a time-limited signed URL for private download. Never expose raw
- * bucket URLs — every customer/admin download must go through this. */
+ * bucket URLs — every customer/admin download must go through this.
+ *
+ * `disposition: "inline"` asks the browser to render the file in place
+ * (works for PDFs, which browsers can render natively) instead of the
+ * default "attachment" behaviour of saving straight to disk — used for the
+ * admin Preview links. DOCX has no native browser renderer, so a browser
+ * downloads it either way regardless of this setting; harmless to pass
+ * "inline" for it too rather than needing to know the file type here. */
 export async function getSignedDownloadUrl(
   key: string,
-  expiresInSeconds = 300
+  expiresInSeconds = 300,
+  disposition: "inline" | "attachment" = "attachment"
 ): Promise<string> {
   const env = getServerEnv();
   const command = new GetObjectCommand({
     Bucket: env.STORAGE_BUCKET_NAME,
     Key: key,
+    ResponseContentDisposition: disposition,
   });
   return getSignedUrl(getClient(), command, { expiresIn: expiresInSeconds });
 }
