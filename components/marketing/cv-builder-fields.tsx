@@ -40,6 +40,7 @@ export interface BuiltCvDraft {
   education: BuiltCvEducationDraft[];
   certificationsText: string;
   awards: BuiltCvAwardDraft[];
+  otherText: string;
 }
 
 export const emptyBuiltCvDraft: BuiltCvDraft = {
@@ -51,7 +52,40 @@ export const emptyBuiltCvDraft: BuiltCvDraft = {
   education: [],
   certificationsText: "",
   awards: [],
+  otherText: "",
 };
+
+/** Splits pasted text into one item per line even when it arrived as a
+ * single run-on block with no line breaks — the exact bug pattern seen in a
+ * real submission (list items concatenated with no separator, or sentences
+ * joined by a period with no following space). Only used on paste, and only
+ * when it finds more than one item; typed text and already-broken-up paste
+ * content are left untouched. See lib/ai/prompts/cv-normalize.ts for the
+ * server-side safety net that catches whatever still slips through. */
+export function smartSplitLines(text: string): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  if (trimmed.includes("\n")) {
+    return trimmed.split("\n").map((s) => s.trim()).filter(Boolean);
+  }
+  const candidate = trimmed
+    .replace(/([.!?);])(?=[A-Z])/g, "$1\n")
+    .replace(/(?<=[a-z0-9])(?=[A-Z][a-z])/g, "\n");
+  return candidate.split("\n").map((s) => s.trim()).filter(Boolean);
+}
+
+function handleSmartPaste(
+  e: React.ClipboardEvent<HTMLTextAreaElement>,
+  currentValue: string,
+  apply: (next: string) => void
+) {
+  const pasted = e.clipboardData.getData("text");
+  if (!pasted || pasted.includes("\n")) return;
+  const lines = smartSplitLines(pasted);
+  if (lines.length <= 1) return;
+  e.preventDefault();
+  apply(currentValue.trim() ? `${currentValue}\n${lines.join("\n")}` : lines.join("\n"));
+}
 
 /** Converts the draft (multi-line textareas, local-only React keys) into the
  * exact shape lib/validation/request.ts's builtCvSchema expects. */
@@ -68,6 +102,7 @@ export function draftToBuiltCv(draft: BuiltCvDraft) {
     professionalProfile: draft.professionalProfile,
     skills: linesOf(draft.skillsText),
     certifications: linesOf(draft.certificationsText),
+    other: linesOf(draft.otherText),
     experience: draft.experience.map((exp) => ({
       jobTitle: exp.jobTitle,
       employer: exp.employer,
@@ -178,7 +213,7 @@ export function CvBuilderFields({
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Education</h3>
+          <h3 className="text-sm font-semibold">Education (optional)</h3>
           <Button type="button" variant="outline" size="sm" onClick={addEducation}>
             + Add qualification
           </Button>
@@ -224,7 +259,7 @@ export function CvBuilderFields({
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Work experience</h3>
+          <h3 className="text-sm font-semibold">Work experience (optional)</h3>
           <Button type="button" variant="outline" size="sm" onClick={addExperience}>
             + Add job
           </Button>
@@ -286,22 +321,38 @@ export function CvBuilderFields({
                 rows={3}
                 value={exp.bulletsText}
                 onChange={(e) => updateExperience(exp._id, { bulletsText: e.target.value })}
+                onPaste={(e) =>
+                  handleSmartPaste(e, exp.bulletsText, (next) =>
+                    updateExperience(exp._id, { bulletsText: next })
+                  )
+                }
                 placeholder={"Handled customer enquiries by phone and email\nTrained new starters"}
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Pasting several points at once? We&rsquo;ll split them onto separate lines
+                automatically.
+              </p>
             </div>
           </div>
         ))}
       </div>
 
       <div>
-        <Label htmlFor="builder-skills">Skills (one per line)</Label>
+        <Label htmlFor="builder-skills">Skills (optional, one per line)</Label>
         <Textarea
           id="builder-skills"
           rows={3}
           value={value.skillsText}
           onChange={(e) => onChange({ ...value, skillsText: e.target.value })}
+          onPaste={(e) =>
+            handleSmartPaste(e, value.skillsText, (next) => onChange({ ...value, skillsText: next }))
+          }
           placeholder={"Customer service\nMicrosoft Office\nTeam leadership"}
         />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Pasting a list of skills at once? We&rsquo;ll split them onto separate lines
+          automatically.
+        </p>
       </div>
 
       <div>
@@ -311,6 +362,11 @@ export function CvBuilderFields({
           rows={2}
           value={value.certificationsText}
           onChange={(e) => onChange({ ...value, certificationsText: e.target.value })}
+          onPaste={(e) =>
+            handleSmartPaste(e, value.certificationsText, (next) =>
+              onChange({ ...value, certificationsText: next })
+            )
+          }
           placeholder={"First Aid at Work, Red Cross - 2023"}
         />
       </div>
@@ -352,6 +408,24 @@ export function CvBuilderFields({
             </div>
           </div>
         ))}
+      </div>
+
+      <div>
+        <Label htmlFor="builder-other">Anything else? (optional, one per line)</Label>
+        <Textarea
+          id="builder-other"
+          rows={2}
+          value={value.otherText}
+          onChange={(e) => onChange({ ...value, otherText: e.target.value })}
+          onPaste={(e) =>
+            handleSmartPaste(e, value.otherText, (next) => onChange({ ...value, otherText: next }))
+          }
+          placeholder={"Fluent in French\nMember, Royal College of Nursing"}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Languages, professional memberships, publications, or anything else worth
+          including that doesn&rsquo;t fit above.
+        </p>
       </div>
     </div>
   );

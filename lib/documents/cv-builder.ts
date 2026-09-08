@@ -54,7 +54,7 @@ export function builtCvToCvContent(builtCv: BuiltCv, fallback: ContactFallback):
       date: ed.date?.trim() || null,
     })),
     certifications: builtCv.certifications,
-    additionalInfo: builtCv.awards.map(formatAward),
+    additionalInfo: [...builtCv.awards.map(formatAward), ...builtCv.other],
     educationFirst: true,
   };
 }
@@ -94,7 +94,10 @@ export function builtCvToStructuredCV(builtCv: BuiltCv, fallback: ContactFallbac
     memberships: [],
     awards: builtCv.awards.map(formatAward),
     publications: [],
-    other: builtCv.portfolioUrl?.trim() ? [builtCv.portfolioUrl.trim()] : [],
+    other: [
+      ...(builtCv.portfolioUrl?.trim() ? [builtCv.portfolioUrl.trim()] : []),
+      ...builtCv.other,
+    ],
   };
 }
 

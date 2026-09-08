@@ -70,6 +70,9 @@ export const builtCvSchema = z
     // "Awards/Recognitions/Volunteer Work" per Indeed's own entry-level/
     // recent-grad resume template — the natural audience for this builder.
     awards: z.array(builtCvAwardSchema).max(20).default([]),
+    // Catch-all: languages, memberships, publications, or anything else that
+    // doesn't fit the sections above — maps to StructuredCV.other.
+    other: z.array(z.string().trim().min(1)).max(30).default([]),
   })
   .superRefine((v, ctx) => {
     const hasContent =
