@@ -136,7 +136,13 @@ export type SaveEditsState = { error?: string };
 
 export async function saveTailoredCvEditsAction(
   requestId: string,
-  edits: { tailoredProfile: string; skills: string[]; experienceBullets: string[][] }
+  edits: {
+    tailoredProfile: string;
+    skills: string[];
+    experienceBullets: string[][];
+    certifications: string[];
+    additionalInfo: string[];
+  }
 ): Promise<SaveEditsState> {
   const admin = await getAdminProfile();
   if (!admin) return { error: "Not authorised." };

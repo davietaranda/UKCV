@@ -16,9 +16,16 @@ import type { TailoredCV } from "@/lib/ai/schemas";
 export function TailoredCvEditor({
   requestId,
   tailoredCV,
+  certifications,
+  additionalInfo,
 }: {
   requestId: string;
   tailoredCV: TailoredCV;
+  /** From cv_documents.structured_cv — passed straight through to the
+   * rendered CV unchanged by the AI tailoring stage, so editing them saves
+   * to that row instead of outputs.tailored_cv. See saveTailoredCvEdits. */
+  certifications: string[];
+  additionalInfo: string[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -31,6 +38,8 @@ export function TailoredCvEditor({
   const [bulletsText, setBulletsText] = useState(
     tailoredCV.tailoredExperience.map((exp) => exp.bullets.join("\n"))
   );
+  const [certificationsText, setCertificationsText] = useState(certifications.join("\n"));
+  const [additionalInfoText, setAdditionalInfoText] = useState(additionalInfo.join("\n"));
 
   const run = (action: "save" | "render" | "regenerate", fn: () => Promise<{ error?: string }>) => {
     setError(null);
@@ -58,7 +67,17 @@ export function TailoredCvEditor({
     const experienceBullets = bulletsText.map((text) =>
       text.split("\n").map((b) => b.trim()).filter(Boolean)
     );
-    run("save", () => saveTailoredCvEditsAction(requestId, { tailoredProfile: profile, skills, experienceBullets }));
+    const editedCertifications = certificationsText.split("\n").map((s) => s.trim()).filter(Boolean);
+    const editedAdditionalInfo = additionalInfoText.split("\n").map((s) => s.trim()).filter(Boolean);
+    run("save", () =>
+      saveTailoredCvEditsAction(requestId, {
+        tailoredProfile: profile,
+        skills,
+        experienceBullets,
+        certifications: editedCertifications,
+        additionalInfo: editedAdditionalInfo,
+      })
+    );
   };
 
   return (
@@ -96,6 +115,30 @@ export function TailoredCvEditor({
           />
         </div>
       ))}
+
+      <div>
+        <Label htmlFor="certifications">Certifications (one per line)</Label>
+        <Textarea
+          id="certifications"
+          value={certificationsText}
+          onChange={(e) => setCertificationsText(e.target.value)}
+          rows={3}
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="additional-info">Additional information (one per line)</Label>
+        <Textarea
+          id="additional-info"
+          value={additionalInfoText}
+          onChange={(e) => setAdditionalInfoText(e.target.value)}
+          rows={3}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Languages, memberships, awards, publications, or anything else shown
+          in this section — edited here as one combined list.
+        </p>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={handleSave} disabled={isPending}>

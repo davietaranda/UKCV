@@ -34,6 +34,22 @@ export default async function AdminRequestDetailPage({
   const { request, cvDocument, jobAnalysis, matching, outputs } = detail;
   const pkg = getPackageById(request.package);
 
+  // Certifications and Additional Information pass through from
+  // structured_cv to the rendered CV unchanged by the AI tailoring stage
+  // (see cv-content.ts's buildCvContent) — computed here so the editor can
+  // show and save exactly what's actually displayed.
+  const structuredCvForEditing = cvDocument?.structured_cv as unknown as StructuredCV | undefined;
+  const editableCertifications = structuredCvForEditing?.certifications ?? [];
+  const editableAdditionalInfo = structuredCvForEditing
+    ? [
+        ...structuredCvForEditing.languages,
+        ...structuredCvForEditing.memberships,
+        ...structuredCvForEditing.awards,
+        ...structuredCvForEditing.publications,
+        ...structuredCvForEditing.other,
+      ]
+    : [];
+
   const tabs: DetailTab[] = [
     {
       id: "overview",
@@ -204,6 +220,8 @@ export default async function AdminRequestDetailPage({
                 <TailoredCvEditor
                   requestId={request.id}
                   tailoredCV={outputs.tailored_cv as unknown as TailoredCV}
+                  certifications={editableCertifications}
+                  additionalInfo={editableAdditionalInfo}
                 />
               </div>
 

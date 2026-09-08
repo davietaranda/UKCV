@@ -21,7 +21,8 @@ export type AiOperation =
   | "evidence_matching"
   | "cv_tailoring"
   | "cover_letter"
-  | "application_answers";
+  | "application_answers"
+  | "cv_normalization";
 
 export type AiRunStatus = "success" | "error" | "timeout";
 

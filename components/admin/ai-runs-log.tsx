@@ -4,6 +4,7 @@ import type { AiRunRow } from "@/lib/admin/ai-runs";
 
 const OPERATION_LABELS: Record<string, string> = {
   cv_extraction: "CV Extraction",
+  cv_normalization: "CV Normalization",
   job_analysis: "Job Analysis",
   evidence_matching: "Evidence Matching",
   cv_tailoring: "CV Tailoring",

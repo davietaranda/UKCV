@@ -11,7 +11,7 @@ import { renderCoverLetterPdf } from "@/lib/documents/cover-letter-pdf";
 import { uploadObject, tailoredCvPdfKey, tailoredCvDocxKey, coverLetterPdfKey } from "@/lib/storage/r2";
 import { getPackageById } from "@/lib/packages";
 import { logger } from "@/lib/logger";
-import { tailoredCVSchema } from "@/lib/ai/schemas";
+import { tailoredCVSchema, structuredCVSchema } from "@/lib/ai/schemas";
 import type { StructuredCV, JobAnalysis, MatchingResult, TailoredCV } from "@/lib/ai/schemas";
 import type { Database } from "@/lib/supabase/types";
 
@@ -268,12 +268,32 @@ export async function reRenderCvDocuments(requestId: string): Promise<ActionResu
   });
 }
 
-/** Saves admin edits to the tailored CV content (profile, skills, per-role
- * bullets) without calling the AI. Does not touch the rendered documents —
- * call reRenderCvDocuments afterwards to reflect the edits in the PDF/DOCX. */
+/**
+ * Saves admin edits to the tailored CV content (profile, skills, per-role
+ * bullets, certifications, additional info) without calling the AI. Does
+ * not touch the rendered documents — call reRenderCvDocuments afterwards
+ * to reflect the edits in the PDF/DOCX.
+ *
+ * Certifications and "Additional Information" aren't part of the tailored
+ * CV at all — cv-content.ts passes them straight through from
+ * cv_documents.structured_cv unchanged (certifications directly; Additional
+ * Information as a merge of structuredCV.languages/memberships/awards/
+ * publications/other). Editing them here means writing to that row instead
+ * of outputs.tailored_cv. Since "Additional Information" is displayed as
+ * one flattened list, editing it as one list and saving it back into just
+ * `other` (clearing the other four source arrays) keeps a single, obvious
+ * source of truth — there's no way for the admin to tell from the CV which
+ * of the five arrays a given line originally came from anyway.
+ */
 export async function saveTailoredCvEdits(
   requestId: string,
-  edits: { tailoredProfile: string; skills: string[]; experienceBullets: string[][] }
+  edits: {
+    tailoredProfile: string;
+    skills: string[];
+    experienceBullets: string[][];
+    certifications: string[];
+    additionalInfo: string[];
+  }
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: outputRow } = await supabase
@@ -304,6 +324,42 @@ export async function saveTailoredCvEdits(
   const validated = tailoredCVSchema.safeParse(updated);
   if (!validated.success) {
     return { error: "Edited content didn't pass validation. Please check for empty fields." };
+  }
+
+  const { data: cvDocRow } = await supabase
+    .from("cv_documents")
+    .select("*")
+    .eq("request_id", requestId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (cvDocRow?.structured_cv) {
+    const currentStructured = cvDocRow.structured_cv as unknown as StructuredCV;
+    const updatedStructured: StructuredCV = {
+      ...currentStructured,
+      certifications: edits.certifications,
+      other: edits.additionalInfo,
+      languages: [],
+      memberships: [],
+      awards: [],
+      publications: [],
+    };
+    const validatedStructured = structuredCVSchema.safeParse(updatedStructured);
+    if (!validatedStructured.success) {
+      return { error: "Edited certifications/additional info didn't pass validation." };
+    }
+    const { error: cvUpdateError } = await supabase
+      .from("cv_documents")
+      .update({ structured_cv: validatedStructured.data })
+      .eq("id", cvDocRow.id);
+    if (cvUpdateError) {
+      logger.error("Failed to save certifications/additional info edits", {
+        requestId,
+        message: cvUpdateError.message,
+      });
+      return { error: "Saved profile/skills/experience, but certifications/additional info failed to save." };
+    }
   }
 
   return upsertOutputs(supabase, requestId, outputRow?.id, { tailored_cv: validated.data });

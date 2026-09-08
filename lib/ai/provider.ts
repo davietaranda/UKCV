@@ -33,6 +33,11 @@ export interface AIUsage {
 
 export interface AIProvider {
   extractCV(rawText: string): Promise<{ data: StructuredCV; usage: AIUsage }>;
+  /** Cleans mechanical copy/paste formatting damage in already-structured
+   * CV data (see lib/ai/prompts/cv-normalize.ts) — used for CVs built via
+   * the "no CV yet" form, which skip extractCV entirely since there's no
+   * raw text to extract from. Never rewrites or invents content. */
+  normalizeCV(cv: StructuredCV): Promise<{ data: StructuredCV; usage: AIUsage }>;
   analyseJob(jobDescription: string): Promise<{ data: JobAnalysis; usage: AIUsage }>;
   matchEvidence(
     cv: StructuredCV,

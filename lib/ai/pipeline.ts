@@ -54,10 +54,35 @@ export async function runRequestAnalysis(requestId: string): Promise<PipelineRes
   // already has structured_cv populated at submission time from data the
   // applicant typed directly — re-parsing the PDF we rendered from that same
   // data and re-extracting it with AI would be strictly lossier, not more
-  // accurate, so skip both steps entirely in that case.
+  // accurate, so skip straight text extraction entirely in that case. It
+  // still gets one cheap cleanup pass (normalizeCV) first, though: builder
+  // submissions are raw applicant input with no other AI touchpoint, so
+  // mechanical copy/paste damage (run-on concatenated items, a stray
+  // section heading pasted onto the front of a field, ...) would otherwise
+  // flow straight through to the final CV untouched. See
+  // lib/ai/prompts/cv-normalize.ts for the exact real-world case this
+  // fixed. Persisted back to cv_documents so the Original CV tab and any
+  // future re-run both see the cleaned version, not the raw one.
   let structuredCV: StructuredCV;
   if (cvDocument.structured_cv) {
-    structuredCV = cvDocument.structured_cv as unknown as StructuredCV;
+    try {
+      structuredCV = await withAIRunLogging(
+        { requestId, operation: "cv_normalization", model: env.GEMINI_MODEL },
+        () => provider.normalizeCV(cvDocument.structured_cv as unknown as StructuredCV)
+      );
+      await supabase
+        .from("cv_documents")
+        .update({ structured_cv: structuredCV })
+        .eq("id", cvDocument.id);
+    } catch (err) {
+      logger.error("CV normalization failed", {
+        requestId,
+        message: err instanceof Error ? err.message : "unknown",
+      });
+      // Not fatal — fall back to the un-normalized data rather than
+      // blocking the whole pipeline over a cleanup pass.
+      structuredCV = cvDocument.structured_cv as unknown as StructuredCV;
+    }
   } else {
     let extractedText = cvDocument.extracted_text;
     if (!extractedText) {

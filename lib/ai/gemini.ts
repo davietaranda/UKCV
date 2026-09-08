@@ -13,6 +13,7 @@ import {
   applicationAnswersResultSchema,
 } from "@/lib/ai/schemas";
 import { buildCVExtractionPrompt } from "@/lib/ai/prompts/cv-extraction";
+import { buildCvNormalizationPrompt } from "@/lib/ai/prompts/cv-normalize";
 import { buildJobAnalysisPrompt } from "@/lib/ai/prompts/job-analysis";
 import { buildEvidenceMatchingPrompt } from "@/lib/ai/prompts/evidence-matching";
 import { buildCVTailoringPrompt } from "@/lib/ai/prompts/cv-tailoring";
@@ -99,6 +100,18 @@ export class GeminiProvider implements AIProvider {
   async extractCV(rawText: string): Promise<{ data: StructuredCV; usage: AIUsage }> {
     const { systemInstruction, prompt } = buildCVExtractionPrompt(rawText);
     return generateStructuredJSON({ systemInstruction, prompt, schema: structuredCVSchema });
+  }
+
+  async normalizeCV(cv: StructuredCV): Promise<{ data: StructuredCV; usage: AIUsage }> {
+    const { systemInstruction, prompt } = buildCvNormalizationPrompt(JSON.stringify(cv));
+    // Pure mechanical cleanup, not creative writing — keep this close to
+    // deterministic so it doesn't drift into rephrasing content.
+    return generateStructuredJSON({
+      systemInstruction,
+      prompt,
+      schema: structuredCVSchema,
+      temperature: 0.2,
+    });
   }
 
   async analyseJob(jobDescription: string): Promise<{ data: JobAnalysis; usage: AIUsage }> {
