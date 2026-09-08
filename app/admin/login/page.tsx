@@ -25,7 +25,7 @@ export default function AdminLoginPage() {
             {state.error ? <Alert variant="danger">{state.error}</Alert> : null}
             <div>
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" autoComplete="email" required />
+              <Input id="email" name="email" type="email" autoComplete="username" required />
             </div>
             <div>
               <Label htmlFor="password">Password</Label>
@@ -37,6 +37,15 @@ export default function AdminLoginPage() {
                 required
               />
             </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                name="remember"
+                defaultChecked
+                className="accent-accent"
+              />
+              Remember me on this device
+            </label>
             <Button type="submit" disabled={isPending} className="mt-2 w-full">
               {isPending ? "Signing in..." : "Sign in"}
             </Button>
