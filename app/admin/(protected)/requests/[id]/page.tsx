@@ -5,8 +5,7 @@ import { getAIRunsForRequest } from "@/lib/admin/ai-runs";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { MatchScore } from "@/components/admin/match-score";
 import { StatusActions } from "@/components/admin/status-actions";
-import { RunAnalysisButton } from "@/components/admin/run-analysis-button";
-import { GenerateDocumentsButton } from "@/components/admin/generate-documents-button";
+import { ProcessRequestButton } from "@/components/admin/process-request-button";
 import { GenerateAnswersForm } from "@/components/admin/generate-answers-form";
 import { AiRunsLog } from "@/components/admin/ai-runs-log";
 import { MatchList } from "@/components/admin/match-list";
@@ -107,7 +106,7 @@ export default async function AdminRequestDetailPage({
           ) : (
             <EmptyState
               title="Not yet extracted"
-              description="Run AI Analysis above to extract text from this CV."
+              description="Click Process Request above to extract text from this CV."
             />
           )}
           {cvDocument.structured_cv ? (
@@ -148,7 +147,7 @@ export default async function AdminRequestDetailPage({
           ) : (
             <EmptyState
               title="Not yet analysed"
-              description="Run AI Analysis above to extract the CV, analyse the job, and match evidence."
+              description="Click Process Request above to extract the CV, analyse the job, and match evidence."
             />
           )}
           <div>
@@ -172,7 +171,7 @@ export default async function AdminRequestDetailPage({
       ) : (
         <EmptyState
           title="Not yet matched"
-          description="Run AI Analysis above to extract the CV, analyse the job, and match evidence."
+          description="Click Process Request above to extract the CV, analyse the job, and match evidence."
         />
       ),
     },
@@ -181,7 +180,6 @@ export default async function AdminRequestDetailPage({
       label: "Tailored CV",
       content: (
         <div className="flex flex-col gap-6">
-          <GenerateDocumentsButton requestId={request.id} />
           {outputs?.tailored_cv && cvDocument?.structured_cv ? (
             <>
               <div className="flex gap-3">
@@ -227,7 +225,7 @@ export default async function AdminRequestDetailPage({
           ) : (
             <EmptyState
               title="Not yet generated"
-              description="Run AI Analysis first, then Generate Documents above."
+              description="Click Process Request above to generate this."
             />
           )}
         </div>
@@ -256,7 +254,7 @@ export default async function AdminRequestDetailPage({
       ) : (
         <EmptyState
           title="Not yet generated"
-          description="Generate Documents (in the Tailored CV tab) also produces the cover letter for this package."
+          description="Process Request (top of page) also produces the cover letter for this package."
         />
       ),
     },
@@ -338,7 +336,7 @@ export default async function AdminRequestDetailPage({
             <MatchScore score={request.match_score} />
           </div>
           <StatusActions requestId={request.id} currentStatus={request.status} />
-          <RunAnalysisButton requestId={request.id} />
+          <ProcessRequestButton requestId={request.id} />
         </div>
       </div>
 

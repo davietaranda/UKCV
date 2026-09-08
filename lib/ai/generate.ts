@@ -38,7 +38,7 @@ async function loadContext(supabase: SupabaseClient, requestId: string) {
     .limit(1)
     .maybeSingle();
   if (!cvDocument?.structured_cv) {
-    return { error: "Run AI Analysis first — no extracted CV data found." } as const;
+    return { error: "Click Process Request first — no extracted CV data found." } as const;
   }
 
   const { data: jobAnalysisRow } = await supabase
@@ -49,7 +49,7 @@ async function loadContext(supabase: SupabaseClient, requestId: string) {
     .limit(1)
     .maybeSingle();
   if (!jobAnalysisRow) {
-    return { error: "Run AI Analysis first — job analysis is missing." } as const;
+    return { error: "Click Process Request first — job analysis is missing." } as const;
   }
 
   const { data: outputRow } = await supabase
@@ -152,7 +152,7 @@ export async function generateTailoredCvAndRender(requestId: string): Promise<Ac
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (!matchingRow) return { error: "Run AI Analysis first — matching is missing." };
+  if (!matchingRow) return { error: "Click Process Request first — matching is missing." };
   const matching = reconstructMatchingResult(matchingRow, request.match_score);
 
   const provider = await getAIProvider();

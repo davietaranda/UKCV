@@ -49,32 +49,28 @@ export async function updateRequestStatus(
   return {};
 }
 
-export type RunAnalysisState = { error?: string };
+export type ProcessRequestState = { error?: string };
 
-/** Runs Stages 1-3 (CV extraction, job analysis, evidence matching) for a
- * request. See lib/ai/pipeline.ts for the actual pipeline logic. */
-export async function runAnalysis(requestId: string): Promise<RunAnalysisState> {
+/**
+ * Runs the full pipeline for a request in one step: analysis (CV
+ * extraction, job analysis, evidence matching — Stages 1-3) immediately
+ * followed by document generation (tailored CV, and a cover letter if the
+ * package includes one — Stage 4-5).
+ *
+ * This replaces what used to be two separate admin actions ("Run AI
+ * Analysis" then, on a different tab, "Generate Documents"). Nothing
+ * meaningful depends on pausing between them, so collapsing them into one
+ * click removes friction without losing capability — the tailored CV and
+ * cover letter can still be regenerated individually afterwards via
+ * regenerateTailoredCv / regenerateCoverLetter below, e.g. after a manual
+ * edit or to retry a transient Gemini failure on just one stage.
+ */
+export async function processRequest(requestId: string): Promise<ProcessRequestState> {
   const admin = await getAdminProfile();
   if (!admin) return { error: "Not authorised." };
 
-  const result = await runRequestAnalysis(requestId);
-
-  revalidatePath(`/admin/requests/${requestId}`);
-  revalidatePath("/admin/requests");
-  revalidatePath("/admin/dashboard");
-
-  return result;
-}
-
-export type GenerateDocumentsState = { error?: string };
-
-/** Generates the tailored CV (PDF + DOCX) and, if the package includes one,
- * a cover letter. See lib/ai/generate.ts. */
-export async function generateDocuments(requestId: string): Promise<GenerateDocumentsState> {
-  const admin = await getAdminProfile();
-  if (!admin) return { error: "Not authorised." };
-
-  const result = await runDocumentGeneration(requestId);
+  const analysisResult = await runRequestAnalysis(requestId);
+  const result = analysisResult.error ? analysisResult : await runDocumentGeneration(requestId);
 
   revalidatePath(`/admin/requests/${requestId}`);
   revalidatePath("/admin/requests");
