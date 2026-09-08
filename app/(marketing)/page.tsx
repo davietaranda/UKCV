@@ -1,4 +1,4 @@
-import { Sparkles, ShieldCheck, Lock, ChevronDown } from "lucide-react";
+import { Sparkles, ShieldCheck, Lock } from "lucide-react";
 import { ApplyForm } from "@/components/marketing/apply-form";
 import { Card } from "@/components/ui/card";
 import { getPublicEnv } from "@/lib/env";
@@ -28,25 +28,6 @@ const TRUST_POINTS = [
   { icon: ShieldCheck, label: "No account needed" },
   { icon: Lock, label: "Private & secure" },
   { icon: Sparkles, label: "No invented experience" },
-] as const;
-
-const FAQS = [
-  {
-    q: "Will this guarantee me an interview?",
-    a: "No. We can't guarantee interviews, employment, or any specific ATS score — no service honestly can. What we do is produce a UK ATS-friendly CV genuinely tailored to the role, based on your real experience.",
-  },
-  {
-    q: "Will you add skills or experience I don't actually have?",
-    a: "No. We only work with what's on your CV. Where the job asks for something your CV doesn't support, we'll flag it rather than invent it.",
-  },
-  {
-    q: "What if I don't have a CV yet?",
-    a: "Choose “I don't have a CV yet” in the form below and fill in what you can — we'll build you a clean, ATS-friendly CV to start from.",
-  },
-  {
-    q: "Is my CV kept private?",
-    a: "Yes. Your documents are stored privately, used only to prepare your application, and deleted after our retention period. See our Privacy Policy for details.",
-  },
 ] as const;
 
 export default async function HomePage() {
@@ -110,24 +91,6 @@ export default async function HomePage() {
                 <h3 className="mt-3 font-medium">{item.title}</h3>
                 <p className="mt-1.5 text-sm text-muted-foreground">{item.description}</p>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="border-t border-border bg-muted/50 px-6 py-16">
-        <div className="mx-auto max-w-3xl">
-          <h2 className="text-center text-2xl font-semibold">Frequently asked questions</h2>
-          <div className="mt-8 flex flex-col divide-y divide-border rounded-xl border border-border bg-card shadow-sm">
-            {FAQS.map((item) => (
-              <details key={item.q} className="group p-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium marker:content-none">
-                  {item.q}
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
-                </summary>
-                <p className="mt-2 text-sm text-muted-foreground">{item.a}</p>
-              </details>
             ))}
           </div>
         </div>
