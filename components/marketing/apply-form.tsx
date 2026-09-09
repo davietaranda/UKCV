@@ -82,7 +82,7 @@ export function ApplyForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-10" noValidate>
+    <form ref={formRef} action={formAction} className="flex flex-col gap-7" noValidate>
       {state.error ? <Alert variant="danger">{state.error}</Alert> : null}
 
       {/* Honeypot — real users never see or fill this in. Any non-empty
@@ -92,7 +92,7 @@ export function ApplyForm({
         <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Your CV</h2>
 
         <div
@@ -137,7 +137,7 @@ export function ApplyForm({
             <Label htmlFor="cv">Upload your CV (PDF or DOCX, max 8MB)</Label>
             <div
               className={cn(
-                "relative flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-8 text-center transition-colors",
+                "relative flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-6 text-center transition-colors",
                 selectedFileName
                   ? "border-accent/50 bg-accent-muted/40"
                   : "border-border bg-muted/40 hover:border-accent/40 hover:bg-accent-muted/40"
@@ -169,7 +169,7 @@ export function ApplyForm({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <p className="text-sm text-muted-foreground">
               No CV yet? Fill in what you can below and we&rsquo;ll build you a clean,
               ATS-friendly CV to start from — an admin can refine it further before
@@ -195,7 +195,7 @@ export function ApplyForm({
         <input type="hidden" name="cvMode" value={cvMode} />
       </section>
 
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">The job you&rsquo;re applying for</h2>
         <div>
           <Label htmlFor="jobDescription">Job description</Label>
@@ -204,14 +204,14 @@ export function ApplyForm({
             name="jobDescription"
             required
             minLength={100}
-            rows={10}
+            rows={7}
             placeholder="Paste the full job description here..."
           />
           {fieldError("jobDescription") ? (
             <p className="mt-1 text-sm text-danger">{fieldError("jobDescription")}</p>
           ) : null}
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <Label htmlFor="company">Company (optional)</Label>
             <Input id="company" name="company" />
@@ -230,9 +230,9 @@ export function ApplyForm({
         </div>
       </section>
 
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Your details</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="customerName">Full name</Label>
             <Input id="customerName" name="customerName" required autoComplete="name" />
@@ -262,9 +262,9 @@ export function ApplyForm({
         </div>
       </section>
 
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Choose a package</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           {PACKAGES.map((pkg) => (
             <label
               key={pkg.id}

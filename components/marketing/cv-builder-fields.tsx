@@ -178,8 +178,8 @@ export function CvBuilderFields({
     onChange({ ...value, awards: value.awards.filter((a) => a._id !== id) });
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid gap-4 sm:grid-cols-2">
+    <div className="flex flex-col gap-5">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <Label htmlFor="builder-location">Location (optional)</Label>
           <Input
@@ -204,7 +204,7 @@ export function CvBuilderFields({
         <Label htmlFor="builder-profile">Professional summary (optional)</Label>
         <Textarea
           id="builder-profile"
-          rows={4}
+          rows={3}
           value={value.professionalProfile}
           onChange={(e) => onChange({ ...value, professionalProfile: e.target.value })}
           placeholder="A couple of sentences about your experience and what you're looking for..."
@@ -219,7 +219,7 @@ export function CvBuilderFields({
           </Button>
         </div>
         {value.education.map((ed, i) => (
-          <div key={ed._id} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+          <div key={ed._id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Qualification {i + 1}</span>
               <Button type="button" variant="ghost" size="sm" onClick={() => removeEducation(ed._id)}>
@@ -271,7 +271,7 @@ export function CvBuilderFields({
           </p>
         ) : null}
         {value.experience.map((exp, i) => (
-          <div key={exp._id} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+          <div key={exp._id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Job {i + 1}</span>
               <Button type="button" variant="ghost" size="sm" onClick={() => removeExperience(exp._id)}>
@@ -379,7 +379,7 @@ export function CvBuilderFields({
           </Button>
         </div>
         {value.awards.map((a, i) => (
-          <div key={a._id} className="flex flex-col gap-3 rounded-lg border border-border p-4">
+          <div key={a._id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-muted-foreground">Item {i + 1}</span>
               <Button type="button" variant="ghost" size="sm" onClick={() => removeAward(a._id)}>
