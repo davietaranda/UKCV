@@ -154,12 +154,14 @@ export class GeminiProvider implements AIProvider {
   async generateCoverLetter(
     cv: StructuredCV,
     job: JobAnalysis,
-    tailoredCV: TailoredCV
+    tailoredCV: TailoredCV,
+    hiringManagerName?: string | null
   ): Promise<{ data: string; usage: AIUsage }> {
     const { systemInstruction, prompt } = buildCoverLetterPrompt(
       JSON.stringify(cv),
       JSON.stringify(job),
-      JSON.stringify(tailoredCV)
+      JSON.stringify(tailoredCV),
+      hiringManagerName
     );
     const { data, usage } = await generateStructuredJSON({
       systemInstruction,

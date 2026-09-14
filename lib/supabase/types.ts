@@ -65,6 +65,7 @@ export interface Database {
           job_title: string | null;
           company: string | null;
           job_url: string | null;
+          hiring_manager_name: string | null;
           job_description: string;
           package: string;
           urgency: string | null;
@@ -83,6 +84,7 @@ export interface Database {
           job_title?: string | null;
           company?: string | null;
           job_url?: string | null;
+          hiring_manager_name?: string | null;
           job_description: string;
           package: string;
           urgency?: string | null;

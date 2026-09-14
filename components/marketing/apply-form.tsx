@@ -211,7 +211,7 @@ export function ApplyForm({
             <p className="mt-1 text-sm text-danger">{fieldError("jobDescription")}</p>
           ) : null}
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="company">Company (optional)</Label>
             <Input id="company" name="company" />
@@ -226,6 +226,13 @@ export function ApplyForm({
             {fieldError("jobUrl") ? (
               <p className="mt-1 text-sm text-danger">{fieldError("jobUrl")}</p>
             ) : null}
+          </div>
+          <div>
+            <Label htmlFor="hiringManagerName">Hiring manager&rsquo;s name (optional)</Label>
+            <Input id="hiringManagerName" name="hiringManagerName" placeholder="e.g. Priya Patel" />
+            <p className="mt-1 text-xs text-muted-foreground">
+              If you know it, we&rsquo;ll address your cover letter to them directly.
+            </p>
           </div>
         </div>
       </section>

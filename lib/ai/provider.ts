@@ -51,7 +51,8 @@ export interface AIProvider {
   generateCoverLetter(
     cv: StructuredCV,
     job: JobAnalysis,
-    tailoredCV: TailoredCV
+    tailoredCV: TailoredCV,
+    hiringManagerName?: string | null
   ): Promise<{ data: string; usage: AIUsage }>;
   generateApplicationAnswers(
     cv: StructuredCV,
