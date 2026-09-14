@@ -188,6 +188,20 @@ export async function generateTailoredCvAndRender(requestId: string): Promise<Ac
   return {};
 }
 
+/** Modern, address-block-free substitute for a formal recipient address —
+ * see lib/documents/cover-letter-pdf.tsx's `subject` prop. Undefined when
+ * neither is known, so the line is omitted entirely rather than rendering
+ * an empty "Re:". */
+function buildCoverLetterSubject(
+  jobTitle: string | null,
+  company: string | null
+): string | undefined {
+  if (jobTitle && company) return `Re: Application for ${jobTitle} at ${company}`;
+  if (jobTitle) return `Re: Application for ${jobTitle}`;
+  if (company) return `Re: Application to ${company}`;
+  return undefined;
+}
+
 /** Calls Gemini to (re)generate the cover letter from the current tailored
  * CV (whether AI-generated or manually edited) and renders/uploads the PDF. */
 export async function generateCoverLetterAndRender(requestId: string): Promise<ActionResult> {
@@ -229,6 +243,7 @@ export async function generateCoverLetterAndRender(requestId: string): Promise<A
       name: content.name,
       contactParts: content.contactParts,
       date: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+      subject: buildCoverLetterSubject(request.job_title, request.company),
       paragraphs: coverLetterText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
     });
     coverLetterKey = coverLetterPdfKey(requestId);

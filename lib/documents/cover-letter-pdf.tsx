@@ -26,8 +26,13 @@ const styles = StyleSheet.create({
   },
   date: {
     marginTop: 16,
-    marginBottom: 16,
+    marginBottom: 4,
     fontSize: 10.5,
+  },
+  subject: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10.5,
+    marginBottom: 16,
   },
   paragraph: {
     marginBottom: 12,
@@ -38,10 +43,21 @@ export interface CoverLetterPdfProps {
   name: string;
   contactParts: string[];
   date: string;
+  /** e.g. "Re: Application for Nursing Assistant at Derby Hospital" — a
+   * lightweight modern substitute for the old formal-letter address block
+   * (which UK ATS guidance now advises against including at all). Omitted
+   * when neither job title nor company is known. */
+  subject?: string;
   paragraphs: string[];
 }
 
-export function CoverLetterPdfDocument({ name, contactParts, date, paragraphs }: CoverLetterPdfProps) {
+export function CoverLetterPdfDocument({
+  name,
+  contactParts,
+  date,
+  subject,
+  paragraphs,
+}: CoverLetterPdfProps) {
   return (
     <Document title={`${name} - Cover Letter`}>
       <Page size="A4" style={styles.page}>
@@ -52,6 +68,7 @@ export function CoverLetterPdfDocument({ name, contactParts, date, paragraphs }:
           ) : null}
         </View>
         <Text style={styles.date}>{date}</Text>
+        {subject ? <Text style={styles.subject}>{subject}</Text> : null}
         {paragraphs.map((p, i) => (
           <Text key={i} style={styles.paragraph}>
             {p}
