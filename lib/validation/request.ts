@@ -17,7 +17,6 @@ export const submissionSchema = z.object({
   company: z.string().trim().max(200).optional().or(z.literal("")),
   jobTitle: z.string().trim().max(200).optional().or(z.literal("")),
   jobUrl: z.string().trim().url("Enter a valid URL.").max(2000).optional().or(z.literal("")),
-  hiringManagerName: z.string().trim().max(200).optional().or(z.literal("")),
   jobDescription: z
     .string()
     .trim()

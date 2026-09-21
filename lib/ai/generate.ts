@@ -221,7 +221,7 @@ export async function generateCoverLetterAndRender(requestId: string): Promise<A
   try {
     coverLetterText = await withAIRunLogging(
       { requestId, operation: "cover_letter", model: env.GEMINI_MODEL },
-      () => provider.generateCoverLetter(structuredCV, jobAnalysis, tailoredCV, request.hiring_manager_name)
+      () => provider.generateCoverLetter(structuredCV, jobAnalysis, tailoredCV)
     );
   } catch (err) {
     logger.error("Cover letter generation failed", {

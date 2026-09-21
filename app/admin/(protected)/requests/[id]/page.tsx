@@ -75,7 +75,6 @@ export default async function AdminRequestDetailPage({
                 <Field label="Job title" value={request.job_title} />
                 <Field label="Company" value={request.company} />
                 <Field label="Job URL" value={request.job_url} />
-                <Field label="Hiring manager" value={request.hiring_manager_name} />
                 <Field label="Package" value={request.package} />
                 <Field label="Urgency" value={request.urgency} />
               </CardContent>
