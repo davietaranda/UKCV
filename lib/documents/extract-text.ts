@@ -12,7 +12,7 @@ const EXTRACTION_TIMEOUT_MS = 30_000;
  *
  * Bounded by a timeout: a crafted/pathological PDF or DOCX (a "zip/PDF
  * bomb") could otherwise hang the parser and tie up the server process
- * indefinitely. The 8MB upload cap (lib/validation/file.ts) limits size,
+ * indefinitely. The 4MB upload cap (lib/validation/file.ts) limits size,
  * this limits parse time.
  */
 export async function extractTextFromCv(

@@ -3,12 +3,13 @@ import { PACKAGES } from "@/lib/packages";
 
 const PACKAGE_IDS = PACKAGES.map((p) => p.id) as [string, ...string[]];
 
-export const MAX_CV_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
 export const ACCEPTED_CV_EXTENSIONS = [".pdf", ".docx"];
-export const ACCEPTED_CV_MIME_TYPES = [
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
+/** Canonical storage content types, keyed by the type detected from the
+ * file's own bytes (see validateCvFile) rather than the browser's claim. */
+export const CV_CONTENT_TYPES = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+} as const;
 
 export const submissionSchema = z.object({
   customerName: z.string().trim().min(2, "Enter your full name.").max(200),

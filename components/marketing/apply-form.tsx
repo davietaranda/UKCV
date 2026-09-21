@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { startTransition, useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { ArrowRight, CheckCircle2, UploadCloud } from "lucide-react";
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Alert } from "@/components/ui/alert";
 import { PACKAGES } from "@/lib/packages";
+import { MAX_CV_SIZE_BYTES, MAX_CV_SIZE_LABEL } from "@/lib/validation/cv-limits";
 import { cn } from "@/lib/utils";
 
 const initialState: ApplyState = {};
@@ -42,11 +43,39 @@ export function ApplyForm({
   );
   const [cvMode, setCvMode] = useState<"upload" | "build">("upload");
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [builtCvDraft, setBuiltCvDraft] = useState<BuiltCvDraft>(emptyBuiltCvDraft);
   const [previewStatus, setPreviewStatus] = useState<"idle" | "loading" | "error">("idle");
   const [previewError, setPreviewError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fieldError = (name: string) => state.fieldErrors?.[name];
+
+  // Passing formAction as the <form action> makes React reset every
+  // uncontrolled field once the server responds — even to a validation
+  // error — wiping the pasted job description and emptying the file input
+  // while the dropzone still shows its name. Dispatching the action
+  // ourselves leaves the form as the user filled it in.
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    startTransition(() => formAction(formData));
+  }
+
+  // The server can't answer a request the platform rejects for size (it
+  // just fails), so an oversize file has to be caught here, with a message.
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file && file.size > MAX_CV_SIZE_BYTES) {
+      e.target.value = "";
+      setSelectedFileName(null);
+      setFileError(
+        `That file is ${(file.size / (1024 * 1024)).toFixed(1)}MB — the limit is ${MAX_CV_SIZE_LABEL}. Try saving or exporting it as a smaller PDF or DOCX.`
+      );
+      return;
+    }
+    setFileError(null);
+    setSelectedFileName(file?.name ?? null);
+  }
 
   async function handlePreview() {
     // Must open the tab synchronously, in the same tick as the click — a
@@ -82,7 +111,7 @@ export function ApplyForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-7" noValidate>
+    <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col gap-7" noValidate>
       {state.error ? <Alert variant="danger">{state.error}</Alert> : null}
 
       {/* Honeypot — real users never see or fill this in. Any non-empty
@@ -134,7 +163,7 @@ export function ApplyForm({
 
         {cvMode === "upload" ? (
           <div>
-            <Label htmlFor="cv">Upload your CV (PDF or DOCX, max 8MB)</Label>
+            <Label htmlFor="cv">Upload your CV (PDF or DOCX, max {MAX_CV_SIZE_LABEL})</Label>
             <div
               className={cn(
                 "relative flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-6 text-center transition-colors",
@@ -163,10 +192,15 @@ export function ApplyForm({
                 type="file"
                 required={cvMode === "upload"}
                 accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={(e) => setSelectedFileName(e.target.files?.[0]?.name ?? null)}
+                onChange={handleFileChange}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               />
             </div>
+            {fileError ? (
+              <p role="alert" className="mt-2 text-sm text-danger">
+                {fileError}
+              </p>
+            ) : null}
           </div>
         ) : (
           <div className="flex flex-col gap-3">

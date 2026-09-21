@@ -1,34 +1,27 @@
-import {
-  MAX_CV_SIZE_BYTES,
-  ACCEPTED_CV_EXTENSIONS,
-  ACCEPTED_CV_MIME_TYPES,
-} from "@/lib/validation/request";
+import { ACCEPTED_CV_EXTENSIONS } from "@/lib/validation/request";
+import { MAX_CV_SIZE_BYTES, MAX_CV_SIZE_LABEL } from "@/lib/validation/cv-limits";
 
-export interface FileValidationResult {
-  valid: boolean;
-  error?: string;
-  detectedType?: "pdf" | "docx";
-}
+export type FileValidationResult =
+  | { valid: true; detectedType: "pdf" | "docx" }
+  | { valid: false; error: string };
 
 /**
- * Validates an uploaded CV file against size, extension, declared MIME type,
- * and actual file signature (magic bytes) — the client-provided MIME type is
- * never trusted on its own, since it's trivial to spoof.
+ * Validates an uploaded CV file against size, extension, and actual file
+ * signature (magic bytes). The browser-declared MIME type is deliberately
+ * not checked: it's spoofable, and mobile file pickers often report
+ * `application/octet-stream` or a nonstandard type for perfectly valid
+ * PDFs/DOCX files, which would reject them for no security benefit.
  */
 export function validateCvFile(file: File, bytes: Uint8Array): FileValidationResult {
   if (file.size === 0) {
     return { valid: false, error: "The uploaded file is empty." };
   }
   if (file.size > MAX_CV_SIZE_BYTES) {
-    return { valid: false, error: "File is too large (max 8MB)." };
+    return { valid: false, error: `File is too large (max ${MAX_CV_SIZE_LABEL}).` };
   }
 
   const extension = getExtension(file.name);
   if (!ACCEPTED_CV_EXTENSIONS.includes(extension)) {
-    return { valid: false, error: "Only PDF and DOCX files are accepted." };
-  }
-
-  if (file.type && !ACCEPTED_CV_MIME_TYPES.includes(file.type)) {
     return { valid: false, error: "Only PDF and DOCX files are accepted." };
   }
 

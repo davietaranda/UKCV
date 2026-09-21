@@ -54,6 +54,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  experimental: {
+    // Server Actions default to a 1MB body, which silently rejected any CV
+    // over 1MB (the apply form uploads through one). Vercel itself caps
+    // request bodies at 4.5MB, so this sits just above the 4MB CV cap in
+    // lib/validation/cv-limits.ts, leaving room for the other form fields.
+    serverActions: { bodySizeLimit: "4.5mb" },
+  },
   async headers() {
     return [
       {

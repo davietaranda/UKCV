@@ -2,7 +2,12 @@
 
 import { randomUUID } from "crypto";
 import { redirect } from "next/navigation";
-import { submissionSchema, builtCvSchema, type BuiltCv } from "@/lib/validation/request";
+import {
+  submissionSchema,
+  builtCvSchema,
+  CV_CONTENT_TYPES,
+  type BuiltCv,
+} from "@/lib/validation/request";
 import { validateCvFile, sanitizeFilename } from "@/lib/validation/file";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uploadObject, originalCvKey } from "@/lib/storage/r2";
@@ -116,7 +121,7 @@ export async function submitRequest(
     }
 
     cvBytes = bytes;
-    cvContentType = cvFile.type || "application/octet-stream";
+    cvContentType = CV_CONTENT_TYPES[fileValidation.detectedType];
     cvFilename = sanitizeFilename(cvFile.name);
   }
 
