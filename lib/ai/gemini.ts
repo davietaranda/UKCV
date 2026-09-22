@@ -57,7 +57,7 @@ export async function generateStructuredJSON<T>(params: {
   });
 
   const started = Date.now();
-  const attempt = async (prompt: string) => model.generateContent(prompt);
+  const attempt = async (prompt: string) => withTransientRetry(() => model.generateContent(prompt));
 
   let result = await attempt(params.prompt);
   let parsed = safeParseJSON(result.response.text());
@@ -86,6 +86,24 @@ export async function generateStructuredJSON<T>(params: {
   };
 
   return { data: validated.data, usage };
+}
+
+// Matches the [429 ...], [500 ...], [502 ...], [503 ...], [504 ...] status
+// Gemini's SDK embeds in its error message (e.g. "[503 Service
+// Unavailable] This model is currently experiencing high demand.") — a
+// transient upstream condition, not a problem with the request itself, so
+// worth one quiet retry before it becomes a user-facing pipeline failure.
+const RETRYABLE_STATUS = /\[(429|500|502|503|504)\b/;
+
+async function withTransientRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "";
+    if (!RETRYABLE_STATUS.test(message)) throw err;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    return fn();
+  }
 }
 
 function safeParseJSON(text: string): { success: true; data: unknown } | { success: false } {
