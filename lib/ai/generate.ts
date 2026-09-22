@@ -181,7 +181,12 @@ export async function generateTailoredCvAndRender(requestId: string): Promise<Ac
   });
   if (saveResult.error) return saveResult;
 
-  if (request.status === "new" || request.status === "processing") {
+  // "Safe to re-run any time" (see ProcessRequestButton's own copy) always
+  // lands on Ready, regardless of which pre-delivery status it started
+  // from — except once delivered/archived, where an explicit admin action
+  // (StatusActions' "Edit & Re-review" / manual revert) is required first,
+  // so a stray re-run can't silently un-deliver something.
+  if (request.status !== "delivered" && request.status !== "archived") {
     await supabase.from("requests").update({ status: "draft_ready" }).eq("id", requestId);
   }
 

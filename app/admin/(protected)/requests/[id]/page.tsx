@@ -14,7 +14,6 @@ import { CvComparison } from "@/components/admin/cv-comparison";
 import { TailoredCvEditor } from "@/components/admin/tailored-cv-editor";
 import { RegenerateCoverLetterButton } from "@/components/admin/regenerate-cover-letter-button";
 import { DeleteRequestButton } from "@/components/admin/delete-request-button";
-import { DetailTabs, type DetailTab } from "@/components/admin/detail-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { JsonPreview } from "@/components/admin/json-preview";
 import { Button } from "@/components/ui/button";
@@ -50,273 +49,82 @@ export default async function AdminRequestDetailPage({
       ]
     : [];
 
-  const tabs: DetailTab[] = [
-    {
-      id: "overview",
-      label: "Overview",
-      content: (
-        <div className="flex flex-col gap-6">
-          <div className="grid gap-6 sm:grid-cols-2">
-            <Card>
-              <CardContent className="flex flex-col gap-2 pt-6 text-sm">
-                <h3 className="font-medium">Customer</h3>
-                <Field label="Name" value={request.customer_name} />
-                <Field label="Email" value={request.email} />
-                <Field label="Phone" value={request.phone} />
-                <Field
-                  label="Consent given"
-                  value={new Date(request.consent_given_at).toLocaleString("en-GB")}
-                />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex flex-col gap-2 pt-6 text-sm">
-                <h3 className="font-medium">Job</h3>
-                <Field label="Job title" value={request.job_title} />
-                <Field label="Company" value={request.company} />
-                <Field label="Job URL" value={request.job_url} />
-                <Field label="Package" value={request.package} />
-                <Field label="Urgency" value={request.urgency} />
-              </CardContent>
-            </Card>
-          </div>
-          <Card className="border-danger/30">
-            <CardContent className="flex flex-col gap-2 pt-6">
-              <h3 className="text-sm font-medium text-danger">Danger zone</h3>
-              <p className="text-sm text-muted-foreground">
-                Permanently deletes the CV, generated documents, and every
-                record for this request from storage and the database.
-              </p>
-              <div className="mt-2">
-                <DeleteRequestButton requestId={request.id} customerName={request.customer_name} />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      ),
-    },
-    {
-      id: "original-cv",
-      label: "Original CV",
-      content: cvDocument ? (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">{cvDocument.original_filename}</p>
-            <div className="flex gap-2">
-              {cvDocument.original_filename?.toLowerCase().endsWith(".pdf") ? (
-                <a
-                  href={`/admin/requests/${request.id}/download?preview=1`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Button variant="ghost" size="sm">
-                    Preview
-                  </Button>
-                </a>
-              ) : null}
-              <a href={`/admin/requests/${request.id}/download`} target="_blank" rel="noreferrer">
-                <Button variant="outline" size="sm">
-                  Download original
-                </Button>
-              </a>
-            </div>
-          </div>
-          {cvDocument.extracted_text ? (
-            <pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
-              {cvDocument.extracted_text}
-            </pre>
-          ) : cvDocument.structured_cv ? (
-            // Built via the "no CV yet" form (components/marketing/cv-builder-fields.tsx):
-            // structured_cv came directly from the applicant, so there's no raw text to
-            // extract and lib/ai/pipeline.ts's Run AI Analysis skips that step entirely.
-            <p className="text-sm text-muted-foreground">
-              Built directly from the applicant&rsquo;s CV form — no text extraction needed.
-            </p>
-          ) : (
-            <EmptyState
-              title="Not yet extracted"
-              description="Click Process Request above to extract text from this CV."
-            />
-          )}
-          {cvDocument.structured_cv ? (
-            <div>
-              <h3 className="mb-2 text-sm font-medium">
-                Structured CV {cvDocument.extracted_text ? "(AI-extracted)" : "(from CV builder)"}
-              </h3>
-              <JsonPreview value={cvDocument.structured_cv} />
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <EmptyState title="No CV on file" />
-      ),
-    },
-    {
-      id: "job",
-      label: "Job",
-      content: (
-        <pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
-          {request.job_description}
-        </pre>
-      ),
-    },
-    {
-      id: "analysis",
-      label: "Analysis",
-      content: (
-        <div className="flex flex-col gap-6">
-          {jobAnalysis ? (
-            <div className="flex flex-col gap-4">
-              <JsonPreview value={jobAnalysis.requirements} />
-              <JsonPreview value={jobAnalysis.responsibilities} />
-              <JsonPreview value={jobAnalysis.keywords} />
-              <JsonPreview value={jobAnalysis.skills} />
-              <JsonPreview value={jobAnalysis.qualifications} />
-            </div>
-          ) : (
-            <EmptyState
-              title="Not yet analysed"
-              description="Click Process Request above to extract the CV, analyse the job, and match evidence."
-            />
-          )}
-          <div>
-            <h3 className="mb-2 text-sm font-medium">AI run log</h3>
-            <AiRunsLog runs={aiRuns} />
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: "matching",
-      label: "Matching",
-      content: matching ? (
-        <MatchList
-          strongMatches={(matching.strong_matches as unknown as EvidenceMatchItem[]) ?? []}
-          partialMatches={(matching.partial_matches as unknown as EvidenceMatchItem[]) ?? []}
-          missingRequirements={
-            (matching.missing_requirements as unknown as EvidenceMatchItem[]) ?? []
-          }
-        />
-      ) : (
-        <EmptyState
-          title="Not yet matched"
-          description="Click Process Request above to extract the CV, analyse the job, and match evidence."
-        />
-      ),
-    },
-    {
-      id: "tailored-cv",
-      label: "Tailored CV",
-      content: (
-        <div className="flex flex-col gap-6">
-          {outputs?.tailored_cv && cvDocument?.structured_cv ? (
-            <>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <FileRow
-                    label="PDF"
-                    available={!!outputs.cv_pdf_path}
-                    href={`/admin/requests/${request.id}/download?type=cv_pdf`}
-                    previewHref={`/admin/requests/${request.id}/download?type=cv_pdf&preview=1`}
-                  />
-                </div>
-                <div className="flex-1">
-                  <FileRow
-                    label="DOCX"
-                    available={!!outputs.cv_docx_path}
-                    href={`/admin/requests/${request.id}/download?type=cv_docx`}
-                  />
-                </div>
-              </div>
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <Link href="/admin/requests" className="text-sm text-accent hover:underline">
+          &larr; Back to requests
+        </Link>
+      </div>
 
-              <div>
-                <h3 className="mb-2 text-sm font-medium">Edit tailored content</h3>
-                <TailoredCvEditor
-                  requestId={request.id}
-                  tailoredCV={outputs.tailored_cv as unknown as TailoredCV}
-                  certifications={editableCertifications}
-                  additionalInfo={editableAdditionalInfo}
-                />
-              </div>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">{request.customer_name}</h1>
+          <p className="text-sm text-muted-foreground">{request.email}</p>
+        </div>
+        <div className="flex flex-col items-end gap-3">
+          <div className="flex items-center gap-2">
+            <StatusBadge status={request.status} />
+            <MatchScore score={request.match_score} />
+          </div>
+          <StatusActions requestId={request.id} currentStatus={request.status} />
+          <ProcessRequestButton requestId={request.id} />
+        </div>
+      </div>
 
-              <div>
-                <h3 className="mb-2 text-sm font-medium">Original vs tailored</h3>
-                <CvComparison
-                  structuredCV={cvDocument.structured_cv as unknown as StructuredCV}
-                  tailoredCV={outputs.tailored_cv as unknown as TailoredCV}
-                />
-              </div>
+      {/* Jump links, not tabs — everything below is one scrollable page, so
+          nothing an admin needs is hidden behind a click, but a long one
+          still gets fast navigation. scroll-mt-20 on each section keeps the
+          sticky site header from covering the heading it jumps to. */}
+      <nav className="flex flex-wrap gap-x-4 gap-y-1 border-b border-border pb-3 text-sm text-accent">
+        <a href="#files" className="hover:underline">
+          Files
+        </a>
+        <a href="#tailored-cv" className="hover:underline">
+          Tailored CV
+        </a>
+        {pkg?.includesCoverLetter ? (
+          <a href="#cover-letter" className="hover:underline">
+            Cover Letter
+          </a>
+        ) : null}
+        {pkg?.includesApplicationAnswers ? (
+          <a href="#application-answers" className="hover:underline">
+            Application Answers
+          </a>
+        ) : null}
+        <a href="#reference" className="hover:underline">
+          Reference material
+        </a>
+      </nav>
 
-              <div>
-                <h3 className="mb-2 text-sm font-medium">Truth Guard</h3>
-                <TruthGuardFlags
-                  flags={(outputs.truth_guard_flags as unknown as TruthGuardFlag[]) ?? []}
-                />
-              </div>
-            </>
-          ) : (
-            <EmptyState
-              title="Not yet generated"
-              description="Click Process Request above to generate this."
+      <section className="grid scroll-mt-20 gap-6 sm:grid-cols-2">
+        <Card>
+          <CardContent className="flex flex-col gap-2 pt-6 text-sm">
+            <h3 className="font-medium">Customer</h3>
+            <Field label="Name" value={request.customer_name} />
+            <Field label="Email" value={request.email} />
+            <Field label="Phone" value={request.phone} />
+            <Field
+              label="Consent given"
+              value={new Date(request.consent_given_at).toLocaleString("en-GB")}
             />
-          )}
-        </div>
-      ),
-    },
-    {
-      id: "cover-letter",
-      label: "Cover Letter",
-      content: !pkg?.includesCoverLetter ? (
-        <EmptyState
-          title="Not included in this package"
-          description={`The "${pkg?.name ?? request.package}" package doesn't include a cover letter.`}
-        />
-      ) : outputs?.cover_letter ? (
-        <div className="flex flex-col gap-4">
-          <FileRow
-            label="Cover Letter (PDF)"
-            available={!!outputs.cover_letter_path}
-            href={`/admin/requests/${request.id}/download?type=cover_letter`}
-            previewHref={`/admin/requests/${request.id}/download?type=cover_letter&preview=1`}
-          />
-          <RegenerateCoverLetterButton requestId={request.id} />
-          <pre className="whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
-            {outputs.cover_letter}
-          </pre>
-        </div>
-      ) : (
-        <EmptyState
-          title="Not yet generated"
-          description="Process Request (top of page) also produces the cover letter for this package."
-        />
-      ),
-    },
-    {
-      id: "application-answers",
-      label: "Application Answers",
-      content: !pkg?.includesApplicationAnswers ? (
-        <EmptyState
-          title="Not included in this package"
-          description={`The "${pkg?.name ?? request.package}" package doesn't include application answers.`}
-        />
-      ) : (
-        <div className="flex flex-col gap-6">
-          <GenerateAnswersForm requestId={request.id} />
-          {outputs?.application_answers ? (
-            <JsonPreview value={outputs.application_answers} />
-          ) : (
-            <EmptyState
-              title="No answers yet"
-              description="Add questions above and generate answers grounded in this CV."
-            />
-          )}
-        </div>
-      ),
-    },
-    {
-      id: "files",
-      label: "Files",
-      content: (
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex flex-col gap-2 pt-6 text-sm">
+            <h3 className="font-medium">Job</h3>
+            <Field label="Job title" value={request.job_title} />
+            <Field label="Company" value={request.company} />
+            <Field label="Job URL" value={request.job_url} />
+            <Field label="Package" value={request.package} />
+            <Field label="Urgency" value={request.urgency} />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section id="files" className="scroll-mt-20">
+        <h2 className="mb-3 text-lg font-semibold">Files</h2>
         <div className="flex flex-col gap-4">
           {outputs?.cv_pdf_path || outputs?.cv_docx_path || outputs?.cover_letter_path ? (
             <a href={`/admin/requests/${request.id}/download-pack`}>
@@ -353,34 +161,235 @@ export default async function AdminRequestDetailPage({
             />
           </div>
         </div>
-      ),
-    },
-  ];
+      </section>
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/admin/requests" className="text-sm text-accent hover:underline">
-          &larr; Back to requests
-        </Link>
-      </div>
+      <section id="tailored-cv" className="scroll-mt-20">
+        <h2 className="mb-3 text-lg font-semibold">Tailored CV</h2>
+        <div className="flex flex-col gap-6">
+          {outputs?.tailored_cv && cvDocument?.structured_cv ? (
+            <>
+              <div>
+                <h3 className="mb-2 text-sm font-medium">Edit tailored content</h3>
+                <TailoredCvEditor
+                  requestId={request.id}
+                  tailoredCV={outputs.tailored_cv as unknown as TailoredCV}
+                  certifications={editableCertifications}
+                  additionalInfo={editableAdditionalInfo}
+                />
+              </div>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{request.customer_name}</h1>
-          <p className="text-sm text-muted-foreground">{request.email}</p>
+              <div>
+                <h3 className="mb-2 text-sm font-medium">Original vs tailored</h3>
+                <CvComparison
+                  structuredCV={cvDocument.structured_cv as unknown as StructuredCV}
+                  tailoredCV={outputs.tailored_cv as unknown as TailoredCV}
+                />
+              </div>
+
+              <div>
+                <h3 className="mb-2 text-sm font-medium">Truth Guard</h3>
+                <TruthGuardFlags
+                  flags={(outputs.truth_guard_flags as unknown as TruthGuardFlag[]) ?? []}
+                />
+              </div>
+            </>
+          ) : (
+            <EmptyState
+              title="Not yet generated"
+              description="Click Process Request above to generate this."
+            />
+          )}
         </div>
-        <div className="flex flex-col items-end gap-3">
-          <div className="flex items-center gap-2">
-            <StatusBadge status={request.status} />
-            <MatchScore score={request.match_score} />
+      </section>
+
+      {pkg?.includesCoverLetter ? (
+        <section id="cover-letter" className="scroll-mt-20">
+          <h2 className="mb-3 text-lg font-semibold">Cover Letter</h2>
+          {outputs?.cover_letter ? (
+            <div className="flex flex-col gap-4">
+              <RegenerateCoverLetterButton requestId={request.id} />
+              <pre className="whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
+                {outputs.cover_letter}
+              </pre>
+            </div>
+          ) : (
+            <EmptyState
+              title="Not yet generated"
+              description="Process Request (top of page) also produces the cover letter for this package."
+            />
+          )}
+        </section>
+      ) : null}
+
+      {pkg?.includesApplicationAnswers ? (
+        <section id="application-answers" className="scroll-mt-20">
+          <h2 className="mb-3 text-lg font-semibold">Application Answers</h2>
+          <div className="flex flex-col gap-6">
+            <GenerateAnswersForm requestId={request.id} />
+            {outputs?.application_answers ? (
+              <JsonPreview value={outputs.application_answers} />
+            ) : (
+              <EmptyState
+                title="No answers yet"
+                description="Add questions above and generate answers grounded in this CV."
+              />
+            )}
           </div>
-          <StatusActions requestId={request.id} currentStatus={request.status} />
-          <ProcessRequestButton requestId={request.id} />
-        </div>
-      </div>
+        </section>
+      ) : null}
 
-      <DetailTabs tabs={tabs} />
+      <section id="reference" className="scroll-mt-20">
+        <h2 className="mb-1 text-lg font-semibold">Reference material</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Everything the AI used to produce the output above — useful for
+          troubleshooting, not needed day to day.
+        </p>
+        <div className="flex flex-col gap-2">
+          <details className="group rounded-lg border border-border">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none">
+              <span className="inline-block w-4 text-muted-foreground group-open:rotate-90">
+                &rsaquo;
+              </span>{" "}
+              Original CV
+            </summary>
+            <div className="flex flex-col gap-4 border-t border-border p-4">
+              {cvDocument ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">{cvDocument.original_filename}</p>
+                    <div className="flex gap-2">
+                      {cvDocument.original_filename?.toLowerCase().endsWith(".pdf") ? (
+                        <a
+                          href={`/admin/requests/${request.id}/download?preview=1`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Button variant="ghost" size="sm">
+                            Preview
+                          </Button>
+                        </a>
+                      ) : null}
+                      <a href={`/admin/requests/${request.id}/download`} target="_blank" rel="noreferrer">
+                        <Button variant="outline" size="sm">
+                          Download original
+                        </Button>
+                      </a>
+                    </div>
+                  </div>
+                  {cvDocument.extracted_text ? (
+                    <pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
+                      {cvDocument.extracted_text}
+                    </pre>
+                  ) : cvDocument.structured_cv ? (
+                    // Built via the "no CV yet" form (components/marketing/cv-builder-fields.tsx):
+                    // structured_cv came directly from the applicant, so there's no raw text to
+                    // extract and lib/ai/pipeline.ts's Run AI Analysis skips that step entirely.
+                    <p className="text-sm text-muted-foreground">
+                      Built directly from the applicant&rsquo;s CV form — no text extraction needed.
+                    </p>
+                  ) : (
+                    <EmptyState
+                      title="Not yet extracted"
+                      description="Click Process Request above to extract text from this CV."
+                    />
+                  )}
+                  {cvDocument.structured_cv ? (
+                    <div>
+                      <h3 className="mb-2 text-sm font-medium">
+                        Structured CV {cvDocument.extracted_text ? "(AI-extracted)" : "(from CV builder)"}
+                      </h3>
+                      <JsonPreview value={cvDocument.structured_cv} />
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <EmptyState title="No CV on file" />
+              )}
+            </div>
+          </details>
+
+          <details className="group rounded-lg border border-border">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none">
+              <span className="inline-block w-4 text-muted-foreground group-open:rotate-90">
+                &rsaquo;
+              </span>{" "}
+              Job description
+            </summary>
+            <div className="border-t border-border p-4">
+              <pre className="max-h-[32rem] overflow-y-auto whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
+                {request.job_description}
+              </pre>
+            </div>
+          </details>
+
+          <details className="group rounded-lg border border-border">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none">
+              <span className="inline-block w-4 text-muted-foreground group-open:rotate-90">
+                &rsaquo;
+              </span>{" "}
+              Analysis &amp; AI run log
+            </summary>
+            <div className="flex flex-col gap-6 border-t border-border p-4">
+              {jobAnalysis ? (
+                <div className="flex flex-col gap-4">
+                  <JsonPreview value={jobAnalysis.requirements} />
+                  <JsonPreview value={jobAnalysis.responsibilities} />
+                  <JsonPreview value={jobAnalysis.keywords} />
+                  <JsonPreview value={jobAnalysis.skills} />
+                  <JsonPreview value={jobAnalysis.qualifications} />
+                </div>
+              ) : (
+                <EmptyState
+                  title="Not yet analysed"
+                  description="Click Process Request above to extract the CV, analyse the job, and match evidence."
+                />
+              )}
+              <div>
+                <h3 className="mb-2 text-sm font-medium">AI run log</h3>
+                <AiRunsLog runs={aiRuns} />
+              </div>
+            </div>
+          </details>
+
+          <details className="group rounded-lg border border-border">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none">
+              <span className="inline-block w-4 text-muted-foreground group-open:rotate-90">
+                &rsaquo;
+              </span>{" "}
+              Matching
+            </summary>
+            <div className="border-t border-border p-4">
+              {matching ? (
+                <MatchList
+                  strongMatches={(matching.strong_matches as unknown as EvidenceMatchItem[]) ?? []}
+                  partialMatches={(matching.partial_matches as unknown as EvidenceMatchItem[]) ?? []}
+                  missingRequirements={
+                    (matching.missing_requirements as unknown as EvidenceMatchItem[]) ?? []
+                  }
+                />
+              ) : (
+                <EmptyState
+                  title="Not yet matched"
+                  description="Click Process Request above to extract the CV, analyse the job, and match evidence."
+                />
+              )}
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <Card className="border-danger/30">
+        <CardContent className="flex flex-col gap-2 pt-6">
+          <h3 className="text-sm font-medium text-danger">Danger zone</h3>
+          <p className="text-sm text-muted-foreground">
+            Permanently deletes the CV, generated documents, and every
+            record for this request from storage and the database.
+          </p>
+          <div className="mt-2">
+            <DeleteRequestButton requestId={request.id} customerName={request.customer_name} />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
