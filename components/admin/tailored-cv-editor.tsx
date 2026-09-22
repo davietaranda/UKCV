@@ -59,7 +59,7 @@ export function TailoredCvEditor({
       } else {
         setNotice(
           action === "save"
-            ? "Edits saved. Re-render documents to update the PDF/DOCX."
+            ? "Edits saved and the PDF/DOCX updated."
             : action === "render"
               ? "Documents re-rendered from the current content."
               : "Tailored CV regenerated from AI — any manual edits were overwritten."

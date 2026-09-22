@@ -148,9 +148,22 @@ export async function saveTailoredCvEditsAction(
   const admin = await getAdminProfile();
   if (!admin) return { error: "Not authorised." };
 
-  const result = await saveTailoredCvEdits(requestId, edits);
+  const saveResult = await saveTailoredCvEdits(requestId, edits);
+  if (saveResult.error) {
+    revalidatePath(`/admin/requests/${requestId}`);
+    return saveResult;
+  }
+
+  // Saving only updates the database — without this, the PDF/DOCX an admin
+  // downloads right after saving still shows the pre-edit content, which
+  // reads as "my edit didn't save" even though it did. One click should do
+  // both.
+  const renderResult = await reRenderCvDocuments(requestId);
   revalidatePath(`/admin/requests/${requestId}`);
-  return result;
+  if (renderResult.error) {
+    return { error: `Saved, but failed to update the PDF/DOCX: ${renderResult.error}` };
+  }
+  return {};
 }
 
 export type DeleteRequestState = { error?: string };
