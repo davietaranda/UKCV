@@ -23,7 +23,7 @@ export interface ActionResult {
   error?: string;
 }
 
-async function loadContext(supabase: SupabaseClient, requestId: string) {
+export async function loadContext(supabase: SupabaseClient, requestId: string) {
   const { data: request } = await supabase
     .from("requests")
     .select("*")
@@ -504,7 +504,7 @@ function reconstructJobAnalysis(
   };
 }
 
-function reconstructMatchingResult(
+export function reconstructMatchingResult(
   row: {
     strong_matches: unknown;
     partial_matches: unknown;
