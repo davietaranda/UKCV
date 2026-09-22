@@ -70,6 +70,10 @@ export async function getAIProvider(): Promise<AIProvider> {
       const { GeminiProvider } = await import("@/lib/ai/gemini");
       return new GeminiProvider();
     }
+    case "claude": {
+      const { ClaudeProvider } = await import("@/lib/ai/claude");
+      return new ClaudeProvider();
+    }
     default:
       throw new Error(`Unknown AI_PROVIDER: ${provider}`);
   }

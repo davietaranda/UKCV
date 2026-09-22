@@ -60,9 +60,14 @@ const serverEnvSchema = z.object({
   // require their actual project region.
   STORAGE_REGION: z.string().min(1).default("auto"),
 
-  AI_PROVIDER: z.enum(["gemini"]).default("gemini"),
+  AI_PROVIDER: z.enum(["gemini", "claude"]).default("gemini"),
   GEMINI_API_KEY: asciiString(z.string().min(1)),
   GEMINI_MODEL: z.string().min(1).default("gemini-3.6-flash"),
+  // Optional so a Gemini-only deployment isn't forced to set this — only
+  // required in practice once AI_PROVIDER=claude (lib/ai/claude.ts fails
+  // fast with a readable error if it's missing at that point).
+  ANTHROPIC_API_KEY: optionalString(asciiString(z.string().min(1))),
+  ANTHROPIC_MODEL: z.string().min(1).default("claude-haiku-4-5"),
 
   RETENTION_DAYS: z.coerce.number().int().positive().default(30),
 
