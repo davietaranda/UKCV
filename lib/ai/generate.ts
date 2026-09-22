@@ -10,6 +10,7 @@ import { renderCvDocx } from "@/lib/documents/cv-docx";
 import { renderCoverLetterPdf } from "@/lib/documents/cover-letter-pdf";
 import { uploadObject, tailoredCvPdfKey, tailoredCvDocxKey, coverLetterPdfKey } from "@/lib/storage/r2";
 import { getPackageById } from "@/lib/packages";
+import { sortByRecency } from "@/lib/ai/employment-order";
 import { logger } from "@/lib/logger";
 import { tailoredCVSchema, structuredCVSchema } from "@/lib/ai/schemas";
 import type { StructuredCV, JobAnalysis, MatchingResult, TailoredCV } from "@/lib/ai/schemas";
@@ -169,6 +170,12 @@ export async function generateTailoredCvAndRender(requestId: string): Promise<Ac
     });
     return { error: "AI CV tailoring failed. Check the AI usage log for details." };
   }
+
+  // structuredCV.employment is already sorted most-recent-first (see
+  // lib/ai/pipeline.ts), but tailoring is a free-form rewrite, not a
+  // guaranteed order-preserving transform — re-enforced here so the
+  // rendered CV can't end up reordered again.
+  tailoredCV = { ...tailoredCV, tailoredExperience: sortByRecency(tailoredCV.tailoredExperience) };
 
   const rendered = await renderAndUploadCv(requestId, structuredCV, tailoredCV, request);
   if (!rendered.ok) return { error: rendered.error };

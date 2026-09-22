@@ -6,6 +6,7 @@ import { getAIProvider } from "@/lib/ai/provider";
 import { withAIRunLogging } from "@/lib/ai/logging";
 import { getObjectBytes } from "@/lib/storage/r2";
 import { extractTextFromCv } from "@/lib/documents/extract-text";
+import { sortByRecency } from "@/lib/ai/employment-order";
 import { logger } from "@/lib/logger";
 import type { StructuredCV } from "@/lib/ai/schemas";
 
@@ -126,6 +127,17 @@ export async function runRequestAnalysis(requestId: string): Promise<PipelineRes
       return { error: "AI CV extraction failed. Check the AI usage log for details." };
     }
   }
+
+  // Neither the CV builder (jobs added in any order) nor AI extraction
+  // reliably returns employment in reverse-chronological order (see
+  // lib/ai/employment-order.ts) — enforced here, once, for every source,
+  // so job analysis/matching/tailoring downstream all see it correctly
+  // ordered too, not just the final rendered CV.
+  structuredCV = { ...structuredCV, employment: sortByRecency(structuredCV.employment) };
+  await supabase
+    .from("cv_documents")
+    .update({ structured_cv: structuredCV })
+    .eq("id", cvDocument.id);
 
   let jobAnalysis;
   try {
