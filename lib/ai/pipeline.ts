@@ -1,8 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { getServerEnv } from "@/lib/env";
-import { getAIProvider } from "@/lib/ai/provider";
+import { getAIProvider, getActiveModelName } from "@/lib/ai/provider";
 import { withAIRunLogging } from "@/lib/ai/logging";
 import { getObjectBytes } from "@/lib/storage/r2";
 import { extractTextFromCv } from "@/lib/documents/extract-text";
@@ -27,7 +26,6 @@ export interface PipelineResult {
  */
 export async function runRequestAnalysis(requestId: string): Promise<PipelineResult> {
   const supabase = await createClient();
-  const env = getServerEnv();
 
   const { data: request } = await supabase
     .from("requests")
@@ -68,7 +66,7 @@ export async function runRequestAnalysis(requestId: string): Promise<PipelineRes
   if (cvDocument.structured_cv) {
     try {
       structuredCV = await withAIRunLogging(
-        { requestId, operation: "cv_normalization", model: env.GEMINI_MODEL },
+        { requestId, operation: "cv_normalization", model: getActiveModelName() },
         () => provider.normalizeCV(cvDocument.structured_cv as unknown as StructuredCV)
       );
       await supabase
@@ -112,7 +110,7 @@ export async function runRequestAnalysis(requestId: string): Promise<PipelineRes
 
     try {
       structuredCV = await withAIRunLogging(
-        { requestId, operation: "cv_extraction", model: env.GEMINI_MODEL },
+        { requestId, operation: "cv_extraction", model: getActiveModelName() },
         () => provider.extractCV(extractedText!)
       );
       await supabase
@@ -142,7 +140,7 @@ export async function runRequestAnalysis(requestId: string): Promise<PipelineRes
   let jobAnalysis;
   try {
     jobAnalysis = await withAIRunLogging(
-      { requestId, operation: "job_analysis", model: env.GEMINI_MODEL },
+      { requestId, operation: "job_analysis", model: getActiveModelName() },
       () => provider.analyseJob(request.job_description)
     );
     await supabase.from("job_analysis").insert({
@@ -167,7 +165,7 @@ export async function runRequestAnalysis(requestId: string): Promise<PipelineRes
 
   try {
     const matching = await withAIRunLogging(
-      { requestId, operation: "evidence_matching", model: env.GEMINI_MODEL },
+      { requestId, operation: "evidence_matching", model: getActiveModelName() },
       () => provider.matchEvidence(structuredCV, jobAnalysis)
     );
     await supabase.from("matching").insert({

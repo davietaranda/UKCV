@@ -8,6 +8,7 @@
  * types are inferred from there so validation and types can't drift apart.
  */
 
+import { getServerEnv } from "@/lib/env";
 import type {
   StructuredCV,
   JobAnalysis,
@@ -59,6 +60,17 @@ export interface AIProvider {
     job: JobAnalysis,
     questions: string[]
   ): Promise<{ data: Array<{ question: string; answer: string }>; usage: AIUsage }>;
+}
+
+/** The model name the currently-selected provider actually calls — for
+ * ai_runs logging (see withAIRunLogging call sites in pipeline.ts/
+ * generate.ts). Was previously hardcoded to env.GEMINI_MODEL at every call
+ * site, which silently mislabelled every run as "gemini-..." once
+ * AI_PROVIDER=claude was live — caught after the fact by checking the live
+ * env directly and noticing the usage log would still say Gemini. */
+export function getActiveModelName(): string {
+  const env = getServerEnv();
+  return env.AI_PROVIDER === "claude" ? env.ANTHROPIC_MODEL : env.GEMINI_MODEL;
 }
 
 export async function getAIProvider(): Promise<AIProvider> {

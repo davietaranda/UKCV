@@ -1,8 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { getServerEnv } from "@/lib/env";
-import { getAIProvider } from "@/lib/ai/provider";
+import { getAIProvider, getActiveModelName } from "@/lib/ai/provider";
 import { withAIRunLogging } from "@/lib/ai/logging";
 import { buildCvContent } from "@/lib/documents/cv-content";
 import { renderCvPdf } from "@/lib/documents/cv-pdf";
@@ -141,7 +140,6 @@ async function renderAndUploadCv(
  * PDF+DOCX. Overwrites any manual edits made via saveTailoredCvEdits. */
 export async function generateTailoredCvAndRender(requestId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const env = getServerEnv();
   const ctx = await loadContext(supabase, requestId);
   if ("error" in ctx) return ctx;
   const { request, structuredCV, jobAnalysis } = ctx;
@@ -160,7 +158,7 @@ export async function generateTailoredCvAndRender(requestId: string): Promise<Ac
   let tailoredCV: TailoredCV;
   try {
     tailoredCV = await withAIRunLogging(
-      { requestId, operation: "cv_tailoring", model: env.GEMINI_MODEL },
+      { requestId, operation: "cv_tailoring", model: getActiveModelName() },
       () => provider.generateTailoredCV(structuredCV, jobAnalysis, matching)
     );
   } catch (err) {
@@ -218,7 +216,6 @@ function buildCoverLetterSubject(
  * CV (whether AI-generated or manually edited) and renders/uploads the PDF. */
 export async function generateCoverLetterAndRender(requestId: string): Promise<ActionResult> {
   const supabase = await createClient();
-  const env = getServerEnv();
   const ctx = await loadContext(supabase, requestId);
   if ("error" in ctx) return ctx;
   const { request, structuredCV, jobAnalysis, outputRow } = ctx;
@@ -232,7 +229,7 @@ export async function generateCoverLetterAndRender(requestId: string): Promise<A
   let coverLetterText: string;
   try {
     coverLetterText = await withAIRunLogging(
-      { requestId, operation: "cover_letter", model: env.GEMINI_MODEL },
+      { requestId, operation: "cover_letter", model: getActiveModelName() },
       () => provider.generateCoverLetter(structuredCV, jobAnalysis, tailoredCV)
     );
   } catch (err) {
@@ -410,7 +407,6 @@ export async function runApplicationAnswers(
   }
 
   const supabase = await createClient();
-  const env = getServerEnv();
   const ctx = await loadContext(supabase, requestId);
   if ("error" in ctx) return ctx;
   const { structuredCV, jobAnalysis, outputRow } = ctx;
@@ -419,7 +415,7 @@ export async function runApplicationAnswers(
   let answers;
   try {
     answers = await withAIRunLogging(
-      { requestId, operation: "application_answers", model: env.GEMINI_MODEL },
+      { requestId, operation: "application_answers", model: getActiveModelName() },
       () => provider.generateApplicationAnswers(structuredCV, jobAnalysis, questions)
     );
   } catch (err) {
