@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { loadContext, reconstructMatchingResult } from "@/lib/ai/generate";
 import { ClaudeProvider } from "@/lib/ai/claude";
 
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   }
   const requestId = url.searchParams.get("requestId") ?? "b50c52f4-f0de-4259-a60b-3efee9e10bb7";
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const ctx = await loadContext(supabase, requestId);
   if ("error" in ctx) {
     return NextResponse.json({ error: ctx.error }, { status: 400 });
