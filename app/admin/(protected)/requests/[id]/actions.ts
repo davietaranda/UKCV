@@ -137,6 +137,7 @@ export type SaveEditsState = { error?: string };
 export async function saveTailoredCvEditsAction(
   requestId: string,
   edits: {
+    professionalTitle: string;
     tailoredProfile: string;
     skills: string[];
     experienceBullets: string[][];

@@ -14,6 +14,13 @@ export const structuredCVSchema = z.object({
     location: z.string().nullable(),
   }),
   professionalProfile: z.string().nullable(),
+  /** Optional headline shown under the name (e.g. "Chartered Accountant").
+   * Deliberately never populated by extraction/normalization — see those
+   * prompts — so it's always either null (auto-derived from the most
+   * recent job title at render time, see cv-content.ts) or an admin's
+   * explicit edit (including "" to force-hide it). Never AI-generated, to
+   * keep it strictly evidence-based rather than matching a target job ad. */
+  professionalTitle: z.string().nullable(),
   employment: z.array(
     z.object({
       jobTitle: z.string(),

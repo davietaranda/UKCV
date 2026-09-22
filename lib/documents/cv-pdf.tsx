@@ -23,6 +23,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginBottom: 4,
   },
+  professionalTitle: {
+    fontSize: 12.5,
+    color: "#374151",
+    marginBottom: 6,
+  },
   contactLine: {
     fontSize: 9.5,
     color: "#4b5563",
@@ -42,9 +47,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   paragraph: {
-    fontSize: 10.5,
-  },
-  skillsRow: {
     fontSize: 10.5,
   },
   entry: {
@@ -137,6 +139,9 @@ export function CvPdfDocument({ content }: { content: CvContent }) {
     <Document title={`${content.name} - CV`}>
       <Page size="A4" style={styles.page}>
         <Text style={styles.name}>{content.name}</Text>
+        {content.professionalTitle ? (
+          <Text style={styles.professionalTitle}>{content.professionalTitle}</Text>
+        ) : null}
         {content.contactParts.length > 0 ? (
           <Text style={styles.contactLine}>{content.contactParts.join("  |  ")}</Text>
         ) : null}
@@ -149,7 +154,9 @@ export function CvPdfDocument({ content }: { content: CvContent }) {
 
         {content.skills.length > 0 ? (
           <Section title="Key Skills">
-            <Text style={styles.skillsRow}>{content.skills.join("  •  ")}</Text>
+            {content.skills.map((skill, i) => (
+              <Bullet key={i} text={skill} />
+            ))}
           </Section>
         ) : null}
 

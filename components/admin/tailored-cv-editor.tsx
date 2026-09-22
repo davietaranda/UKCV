@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert } from "@/components/ui/alert";
@@ -16,11 +17,16 @@ import type { TailoredCV } from "@/lib/ai/schemas";
 export function TailoredCvEditor({
   requestId,
   tailoredCV,
+  professionalTitle,
   certifications,
   additionalInfo,
 }: {
   requestId: string;
   tailoredCV: TailoredCV;
+  /** Pre-filled with the auto-derived suggestion (most recent job title) if
+   * never explicitly set — see resolveProfessionalTitle in cv-content.ts.
+   * Saving it blank hides the line entirely rather than falling back. */
+  professionalTitle: string;
   /** From cv_documents.structured_cv — passed straight through to the
    * rendered CV unchanged by the AI tailoring stage, so editing them saves
    * to that row instead of outputs.tailored_cv. See saveTailoredCvEdits. */
@@ -33,6 +39,7 @@ export function TailoredCvEditor({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const [professionalTitleText, setProfessionalTitleText] = useState(professionalTitle);
   const [profile, setProfile] = useState(tailoredCV.tailoredProfile);
   const [skillsText, setSkillsText] = useState(tailoredCV.skills.join("\n"));
   const [bulletsText, setBulletsText] = useState(
@@ -71,6 +78,7 @@ export function TailoredCvEditor({
     const editedAdditionalInfo = additionalInfoText.split("\n").map((s) => s.trim()).filter(Boolean);
     run("save", () =>
       saveTailoredCvEditsAction(requestId, {
+        professionalTitle: professionalTitleText.trim(),
         tailoredProfile: profile,
         skills,
         experienceBullets,
@@ -84,6 +92,20 @@ export function TailoredCvEditor({
     <div className="flex flex-col gap-6 rounded-md border border-border p-4">
       {error ? <Alert variant="danger">{error}</Alert> : null}
       {notice ? <Alert variant="success">{notice}</Alert> : null}
+
+      <div>
+        <Label htmlFor="professional-title">Professional title (optional)</Label>
+        <Input
+          id="professional-title"
+          value={professionalTitleText}
+          onChange={(e) => setProfessionalTitleText(e.target.value)}
+          placeholder="e.g. Chartered Accountant"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Shown under the name on the CV. Pre-filled from their most recent job
+          title — edit it, or clear it to hide the line entirely.
+        </p>
+      </div>
 
       <div>
         <Label htmlFor="profile">Professional profile</Label>

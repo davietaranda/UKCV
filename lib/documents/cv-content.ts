@@ -2,6 +2,10 @@ import type { StructuredCV, TailoredCV } from "@/lib/ai/schemas";
 
 export interface CvContent {
   name: string;
+  /** Optional headline under the name (e.g. "Chartered Accountant"). Null
+   * hides it entirely — either nothing was derivable, or an admin
+   * explicitly cleared it (see resolveProfessionalTitle). */
+  professionalTitle: string | null;
   contactParts: string[];
   profile: string;
   skills: string[];
@@ -15,6 +19,21 @@ export interface CvContent {
    * layout otherwise uses. Set by lib/documents/cv-builder.ts; left unset
    * (Experience-first) for the AI-tailored path. */
   educationFirst?: boolean;
+}
+
+/** null or undefined (never explicitly set — undefined covers every
+ * cv_documents row stored before this field existed, since Postgres jsonb
+ * has no schema of its own to backfill it) falls back to the candidate's
+ * own most recent job title (employment is sorted most-recent-first by
+ * lib/ai/employment-order.ts); "" (an admin explicitly cleared the field)
+ * hides the line entirely rather than falling back; any other string is
+ * used as given. */
+export function resolveProfessionalTitle(structuredCV: StructuredCV): string | null {
+  const title = structuredCV.professionalTitle;
+  if (title === null || title === undefined) {
+    return structuredCV.employment[0]?.jobTitle ?? null;
+  }
+  return title.trim() || null;
 }
 
 function formatDateRange(start: string | null, end: string | null): string {
@@ -60,6 +79,7 @@ export function buildCvContent(
 
   return {
     name,
+    professionalTitle: resolveProfessionalTitle(structuredCV),
     contactParts,
     profile: tailoredCV.tailoredProfile,
     skills: tailoredCV.skills,

@@ -19,6 +19,7 @@ import { JsonPreview } from "@/components/admin/json-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getPackageById } from "@/lib/packages";
+import { resolveProfessionalTitle } from "@/lib/documents/cv-content";
 import type { StructuredCV, TailoredCV, EvidenceMatchItem, TruthGuardFlag } from "@/lib/ai/schemas";
 
 export default async function AdminRequestDetailPage({
@@ -38,6 +39,12 @@ export default async function AdminRequestDetailPage({
   // (see cv-content.ts's buildCvContent) — computed here so the editor can
   // show and save exactly what's actually displayed.
   const structuredCvForEditing = cvDocument?.structured_cv as unknown as StructuredCV | undefined;
+  // Never null: the editor always needs something to show in the box, even
+  // when nothing has been explicitly set yet — falls back to the same
+  // auto-derived suggestion the rendered CV itself would use.
+  const editableProfessionalTitle = structuredCvForEditing
+    ? (resolveProfessionalTitle(structuredCvForEditing) ?? "")
+    : "";
   const editableCertifications = structuredCvForEditing?.certifications ?? [];
   const editableAdditionalInfo = structuredCvForEditing
     ? [
@@ -173,6 +180,7 @@ export default async function AdminRequestDetailPage({
                 <TailoredCvEditor
                   requestId={request.id}
                   tailoredCV={outputs.tailored_cv as unknown as TailoredCV}
+                  professionalTitle={editableProfessionalTitle}
                   certifications={editableCertifications}
                   additionalInfo={editableAdditionalInfo}
                 />

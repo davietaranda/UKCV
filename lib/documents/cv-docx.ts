@@ -43,6 +43,15 @@ export async function renderCvDocx(content: CvContent): Promise<Buffer> {
     }),
   ];
 
+  if (content.professionalTitle) {
+    children.push(
+      new Paragraph({
+        spacing: { after: 80 },
+        children: [new TextRun({ text: content.professionalTitle, size: 25, color: GREY })],
+      })
+    );
+  }
+
   if (content.contactParts.length > 0) {
     children.push(
       new Paragraph({
@@ -65,13 +74,10 @@ export async function renderCvDocx(content: CvContent): Promise<Buffer> {
   }
 
   if (content.skills.length > 0) {
-    children.push(
-      sectionHeading("Key Skills"),
-      new Paragraph({
-        spacing: { after: 120 },
-        children: [new TextRun({ text: content.skills.join("  •  "), size: 21, color: DARK })],
-      })
-    );
+    children.push(sectionHeading("Key Skills"));
+    for (const skill of content.skills) {
+      children.push(bulletParagraph(skill));
+    }
   }
 
   if (content.experience.length > 0) {

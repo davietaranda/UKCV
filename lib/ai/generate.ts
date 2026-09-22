@@ -312,6 +312,7 @@ export async function reRenderCvDocuments(requestId: string): Promise<ActionResu
 export async function saveTailoredCvEdits(
   requestId: string,
   edits: {
+    professionalTitle: string;
     tailoredProfile: string;
     skills: string[];
     experienceBullets: string[][];
@@ -362,6 +363,10 @@ export async function saveTailoredCvEdits(
     const currentStructured = cvDocRow.structured_cv as unknown as StructuredCV;
     const updatedStructured: StructuredCV = {
       ...currentStructured,
+      // "" deliberately stored as-is (not coerced to null) — it means the
+      // admin explicitly cleared it, which must hide the line rather than
+      // falling back to the auto-derived title. See resolveProfessionalTitle.
+      professionalTitle: edits.professionalTitle,
       certifications: edits.certifications,
       other: edits.additionalInfo,
       languages: [],

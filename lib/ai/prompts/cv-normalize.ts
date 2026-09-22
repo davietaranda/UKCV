@@ -50,6 +50,9 @@ Fix these problems, only where they actually appear:
 If a field has none of these problems, leave it completely unchanged —
 this is a targeted cleanup pass, not an editing pass. If nothing in the
 whole CV needs fixing, return the input exactly as given.
+Leave professionalTitle exactly as given in the input, completely
+unchanged, even if it is null or an empty string — it is managed entirely
+outside this cleanup pass; never invent, infer, or modify it.
 Return ONLY JSON matching the required schema.
 `.trim();
 

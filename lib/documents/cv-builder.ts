@@ -39,6 +39,10 @@ export function builtCvToCvContent(builtCv: BuiltCv, fallback: ContactFallback):
 
   return {
     name: fallback.customerName,
+    // No admin-override concept exists yet at this pre-AI, one-off initial
+    // render — that only applies once cv_documents.structured_cv exists
+    // (see resolveProfessionalTitle in cv-content.ts).
+    professionalTitle: builtCv.experience[0]?.jobTitle || null,
     contactParts,
     profile: builtCv.professionalProfile ?? "",
     skills: builtCv.skills,
@@ -73,6 +77,10 @@ export function builtCvToStructuredCV(builtCv: BuiltCv, fallback: ContactFallbac
       location: builtCv.location?.trim() || null,
     },
     professionalProfile: builtCv.professionalProfile?.trim() || null,
+    // Null (not auto-derived here) so cv-content.ts's single fallback path
+    // handles it consistently for every source — see structuredCVSchema's
+    // professionalTitle comment.
+    professionalTitle: null,
     employment: builtCv.experience.map((exp) => ({
       jobTitle: exp.jobTitle,
       employer: exp.employer,
