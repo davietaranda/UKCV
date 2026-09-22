@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getServerEnv } from "@/lib/env";
@@ -88,6 +89,19 @@ export async function getSignedDownloadUrl(
     ResponseContentDisposition: disposition,
   });
   return getSignedUrl(getClient(), command, { expiresIn: expiresInSeconds });
+}
+
+/** Free-tier Supabase Storage projects auto-pause after about a week with
+ * no activity, which then fails every CV upload until someone manually
+ * restores the project in the dashboard (there's no API for that — that's
+ * on the account owner). This project's own uploads/downloads may not
+ * happen daily, so the retention cron calls this to generate activity on
+ * a genuinely idle day. Listing 1 key is read-only and side-effect-free. */
+export async function pingStorage(): Promise<void> {
+  const env = getServerEnv();
+  await getClient().send(
+    new ListObjectsV2Command({ Bucket: env.STORAGE_BUCKET_NAME, MaxKeys: 1 })
+  );
 }
 
 export async function deleteObject(key: string): Promise<void> {

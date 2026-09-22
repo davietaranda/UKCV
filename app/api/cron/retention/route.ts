@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { purgeExpiredRequests } from "@/lib/admin/retention";
+import { pingStorage } from "@/lib/storage/r2";
 import { getServerEnv } from "@/lib/env";
 import { logger } from "@/lib/logger";
 
@@ -45,5 +46,18 @@ export async function GET(request: Request) {
     errors: result.errors,
   });
 
-  return NextResponse.json(result);
+  // Best-effort: the storage project pausing is real (see pingStorage's own
+  // comment) but is a separate concern from retention, so a failure here
+  // logs and moves on rather than turning into a 500 for the whole sweep.
+  let storagePinged = true;
+  try {
+    await pingStorage();
+  } catch (err) {
+    storagePinged = false;
+    logger.error("Storage keep-alive ping failed", {
+      message: err instanceof Error ? err.message : "unknown",
+    });
+  }
+
+  return NextResponse.json({ ...result, storagePinged });
 }
