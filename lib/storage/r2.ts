@@ -76,17 +76,24 @@ export async function getObjectBytes(key: string): Promise<Uint8Array> {
  * default "attachment" behaviour of saving straight to disk — used for the
  * admin Preview links. DOCX has no native browser renderer, so a browser
  * downloads it either way regardless of this setting; harmless to pass
- * "inline" for it too rather than needing to know the file type here. */
+ * "inline" for it too rather than needing to know the file type here.
+ *
+ * `filename`, when given, names the saved/previewed file (e.g. "Erick
+ * Nzuki - Tailored CV.pdf") instead of leaving the browser to guess from
+ * the object key, which is a generic "tailored-cv.pdf" for every request.
+ * Must already be a safe header value — callers build it with
+ * sanitizeFilename (lib/validation/file.ts), not raw user input. */
 export async function getSignedDownloadUrl(
   key: string,
   expiresInSeconds = 300,
-  disposition: "inline" | "attachment" = "attachment"
+  disposition: "inline" | "attachment" = "attachment",
+  filename?: string
 ): Promise<string> {
   const env = getServerEnv();
   const command = new GetObjectCommand({
     Bucket: env.STORAGE_BUCKET_NAME,
     Key: key,
-    ResponseContentDisposition: disposition,
+    ResponseContentDisposition: filename ? `${disposition}; filename="${filename}"` : disposition,
   });
   return getSignedUrl(getClient(), command, { expiresIn: expiresInSeconds });
 }

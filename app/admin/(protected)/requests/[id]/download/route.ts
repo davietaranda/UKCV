@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminProfile } from "@/lib/admin/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getSignedDownloadUrl } from "@/lib/storage/r2";
+import { sanitizeFilename } from "@/lib/validation/file";
 
 const FILE_TYPES = ["original", "cv_pdf", "cv_docx", "cover_letter"] as const;
 type FileType = (typeof FILE_TYPES)[number];
@@ -27,30 +28,52 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const disposition = url.searchParams.get("preview") === "1" ? "inline" : "attachment";
 
   const supabase = await createClient();
-  const objectKey = await resolveObjectKey(supabase, id, type);
 
-  if (!objectKey) {
+  const { data: requestRow } = await supabase
+    .from("requests")
+    .select("customer_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (!requestRow) {
+    return NextResponse.json({ error: "Request not found" }, { status: 404 });
+  }
+
+  const resolved = await resolveObjectKey(supabase, id, type);
+  if (!resolved) {
     return NextResponse.json({ error: "File not found for this request" }, { status: 404 });
   }
 
-  const signedUrl = await getSignedDownloadUrl(objectKey, 120, disposition);
+  const filename = sanitizeFilename(
+    `${requestRow.customer_name} - ${DOWNLOAD_LABELS[type]}${resolved.extension}`
+  );
+  const signedUrl = await getSignedDownloadUrl(resolved.key, 120, disposition, filename);
   return NextResponse.redirect(signedUrl);
 }
+
+const DOWNLOAD_LABELS: Record<FileType, string> = {
+  original: "Original CV",
+  cv_pdf: "Tailored CV",
+  cv_docx: "Tailored CV",
+  cover_letter: "Cover Letter",
+};
 
 async function resolveObjectKey(
   supabase: Awaited<ReturnType<typeof createClient>>,
   requestId: string,
   type: FileType
-): Promise<string | null> {
+): Promise<{ key: string; extension: string } | null> {
   if (type === "original") {
     const { data } = await supabase
       .from("cv_documents")
-      .select("original_file_path")
+      .select("original_file_path, original_filename")
       .eq("request_id", requestId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    return data?.original_file_path ?? null;
+    if (!data?.original_file_path) return null;
+    const dot = data.original_filename?.lastIndexOf(".") ?? -1;
+    const extension = dot > -1 ? data.original_filename!.slice(dot) : "";
+    return { key: data.original_file_path, extension };
   }
 
   const { data } = await supabase
@@ -62,7 +85,7 @@ async function resolveObjectKey(
     .maybeSingle();
 
   if (!data) return null;
-  if (type === "cv_pdf") return data.cv_pdf_path;
-  if (type === "cv_docx") return data.cv_docx_path;
-  return data.cover_letter_path;
+  if (type === "cv_pdf") return data.cv_pdf_path ? { key: data.cv_pdf_path, extension: ".pdf" } : null;
+  if (type === "cv_docx") return data.cv_docx_path ? { key: data.cv_docx_path, extension: ".docx" } : null;
+  return data.cover_letter_path ? { key: data.cover_letter_path, extension: ".pdf" } : null;
 }

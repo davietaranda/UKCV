@@ -3,6 +3,7 @@ import JSZip from "jszip";
 import { getAdminProfile } from "@/lib/admin/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getObjectBytes } from "@/lib/storage/r2";
+import { sanitizeFilename } from "@/lib/validation/file";
 import { logger } from "@/lib/logger";
 
 /** Bundles every available deliverable for a request (tailored CV PDF+DOCX,
@@ -40,9 +41,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const zip = new JSZip();
   const files: Array<[string, string | null]> = [
-    ["Tailored CV.pdf", outputs.cv_pdf_path],
-    ["Tailored CV.docx", outputs.cv_docx_path],
-    ["Cover Letter.pdf", outputs.cover_letter_path],
+    [sanitizeFilename(`${request.customer_name} - Tailored CV.pdf`), outputs.cv_pdf_path],
+    [sanitizeFilename(`${request.customer_name} - Tailored CV.docx`), outputs.cv_docx_path],
+    [sanitizeFilename(`${request.customer_name} - Cover Letter.pdf`), outputs.cover_letter_path],
   ];
 
   let added = 0;
@@ -66,7 +67,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   const zipBytes = Uint8Array.from(await zip.generateAsync({ type: "nodebuffer" }));
-  const safeName = request.customer_name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const safeName = sanitizeFilename(request.customer_name);
 
   return new NextResponse(new Blob([zipBytes]), {
     headers: {
