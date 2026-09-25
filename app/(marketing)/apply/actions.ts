@@ -33,7 +33,7 @@ export async function submitRequest(
     company: formData.get("company") ?? "",
     jobTitle: formData.get("jobTitle") ?? "",
     jobUrl: formData.get("jobUrl") ?? "",
-    jobDescription: formData.get("jobDescription"),
+    jobDescription: formData.get("jobDescription") ?? "",
     packageId: formData.get("packageId"),
     urgency: formData.get("urgency") ?? "",
     consent: formData.get("consent"),
@@ -189,7 +189,10 @@ export async function submitRequest(
     job_title: parsed.data.jobTitle || null,
     company: parsed.data.company || null,
     job_url: parsed.data.jobUrl || null,
-    job_description: parsed.data.jobDescription,
+    // Column is text not null — "" (not a migration-requiring null) is how
+    // "no job description given" is represented, same as the marketing form
+    // leaving it blank.
+    job_description: parsed.data.jobDescription || "",
     package: parsed.data.packageId,
     urgency: parsed.data.urgency || null,
     ip_hash: ipHash,

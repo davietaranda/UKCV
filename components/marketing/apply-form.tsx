@@ -232,14 +232,12 @@ export function ApplyForm({
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">The job you&rsquo;re applying for</h2>
         <div>
-          <Label htmlFor="jobDescription">Job description</Label>
+          <Label htmlFor="jobDescription">Job description (optional)</Label>
           <Textarea
             id="jobDescription"
             name="jobDescription"
-            required
-            minLength={100}
             rows={7}
-            placeholder="Paste the full job description here..."
+            placeholder="Paste the full job description here — leave blank for a general CV polish with no specific job target."
           />
           {fieldError("jobDescription") ? (
             <p className="mt-1 text-sm text-danger">{fieldError("jobDescription")}</p>
