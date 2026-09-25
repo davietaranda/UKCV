@@ -1,4 +1,4 @@
-import type { StructuredCV, TailoredCV } from "@/lib/ai/schemas";
+import type { StructuredCV, TailoredCV, Referee } from "@/lib/ai/schemas";
 
 export interface CvContent {
   name: string;
@@ -13,6 +13,8 @@ export interface CvContent {
   education: Array<{ qualification: string; institution: string; date: string | null }>;
   certifications: string[];
   additionalInfo: string[];
+  /** Optional "References" section — empty hides it entirely. */
+  referees: Referee[];
   /** Entry-level/recent-grad convention (Indeed's own template for that
    * audience) leads with Education before Experience, since work history is
    * limited — the opposite of the standard experienced-hire order this
@@ -87,5 +89,6 @@ export function buildCvContent(
     education: structuredCV.education,
     certifications: structuredCV.certifications,
     additionalInfo,
+    referees: structuredCV.referees,
   };
 }

@@ -135,6 +135,23 @@ export function CvPdfDocument({ content }: { content: CvContent }) {
       </Section>
     ) : null;
 
+  const refereesSection =
+    content.referees.length > 0 ? (
+      <Section title="References">
+        {content.referees.map((ref, i) => {
+          const subtitle = [ref.jobTitle, ref.company].filter(Boolean).join(", ");
+          const contact = [ref.email, ref.phone].filter(Boolean).join("  |  ");
+          return (
+            <View key={i} style={styles.entry} wrap={false}>
+              <Text style={styles.entryTitle}>{ref.name}</Text>
+              {subtitle ? <Text style={styles.entrySubtitle}>{subtitle}</Text> : null}
+              {contact ? <Text style={styles.entryDate}>{contact}</Text> : null}
+            </View>
+          );
+        })}
+      </Section>
+    ) : null;
+
   return (
     <Document title={`${content.name} - CV`}>
       <Page size="A4" style={styles.page}>
@@ -176,6 +193,8 @@ export function CvPdfDocument({ content }: { content: CvContent }) {
             <Text style={styles.paragraph}>{content.additionalInfo.join("  •  ")}</Text>
           </Section>
         ) : null}
+
+        {refereesSection}
       </Page>
     </Document>
   );

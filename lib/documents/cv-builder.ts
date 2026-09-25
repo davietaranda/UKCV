@@ -59,6 +59,9 @@ export function builtCvToCvContent(builtCv: BuiltCv, fallback: ContactFallback):
     })),
     certifications: builtCv.certifications,
     additionalInfo: [...builtCv.awards.map(formatAward), ...builtCv.other],
+    // Not collected by this builder form — only ever added later via the
+    // admin editor, same as the AI-extracted path.
+    referees: [],
     educationFirst: true,
   };
 }
@@ -102,6 +105,9 @@ export function builtCvToStructuredCV(builtCv: BuiltCv, fallback: ContactFallbac
     memberships: [],
     awards: builtCv.awards.map(formatAward),
     publications: [],
+    // Not collected by this builder form — only ever added later via the
+    // admin editor, same as the AI-extracted path (see structuredCVSchema).
+    referees: [],
     other: [
       ...(builtCv.portfolioUrl?.trim() ? [builtCv.portfolioUrl.trim()] : []),
       ...builtCv.other,

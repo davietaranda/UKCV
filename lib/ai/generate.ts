@@ -294,9 +294,9 @@ export async function reRenderCvDocuments(requestId: string): Promise<ActionResu
 
 /**
  * Saves admin edits to the tailored CV content (name, contact, profile,
- * skills, work experience, education, certifications, additional info)
- * without calling the AI. Does not touch the rendered documents — call
- * reRenderCvDocuments afterwards to reflect the edits in the PDF/DOCX.
+ * skills, work experience, education, certifications, additional info,
+ * referees) without calling the AI. Does not touch the rendered documents —
+ * call reRenderCvDocuments afterwards to reflect the edits in the PDF/DOCX.
  *
  * Work experience (job title/employer/dates/bullets) is edited as a full
  * replacement array, not merged against the previous one — this is what
@@ -306,17 +306,19 @@ export async function reRenderCvDocuments(requestId: string): Promise<ActionResu
  * cv_documents.structured_cv.employment stays untouched as the original,
  * unedited reference shown in the "Original vs tailored" comparison.
  *
- * Name, contact, education, certifications, and "Additional Information"
- * aren't part of the tailored CV at all — cv-content.ts passes them
- * straight through from cv_documents.structured_cv unchanged (certifications
- * directly; Additional Information as a merge of structuredCV.languages/
- * memberships/awards/publications/other). Editing them here means writing
- * to that row instead of outputs.tailored_cv. Since "Additional Information"
- * is displayed as one flattened list, editing it as one list and saving it
- * back into just `other` (clearing the other four source arrays) keeps a
- * single, obvious source of truth — there's no way for the admin to tell
- * from the CV which of the five arrays a given line originally came from
- * anyway.
+ * Name, contact, education, certifications, "Additional Information", and
+ * referees aren't part of the tailored CV at all — cv-content.ts passes
+ * them straight through from cv_documents.structured_cv unchanged
+ * (certifications and referees directly; Additional Information as a merge
+ * of structuredCV.languages/memberships/awards/publications/other). Editing
+ * them here means writing to that row instead of outputs.tailored_cv. Since
+ * "Additional Information" is displayed as one flattened list, editing it
+ * as one list and saving it back into just `other` (clearing the other four
+ * source arrays) keeps a single, obvious source of truth — there's no way
+ * for the admin to tell from the CV which of the five arrays a given line
+ * originally came from anyway. Referees, like professionalTitle, are never
+ * AI-populated (see structuredCVSchema) — the admin's edit here is the only
+ * way this section is ever filled in, and an empty array hides it entirely.
  */
 export async function saveTailoredCvEdits(
   requestId: string,
@@ -336,6 +338,7 @@ export async function saveTailoredCvEdits(
     education: Array<{ qualification: string; institution: string; date: string }>;
     certifications: string[];
     additionalInfo: string[];
+    referees: Array<{ name: string; jobTitle: string; company: string; email: string; phone: string }>;
   }
 ): Promise<ActionResult> {
   const supabase = await createClient();
@@ -404,6 +407,7 @@ export async function saveTailoredCvEdits(
       memberships: [],
       awards: [],
       publications: [],
+      referees: edits.referees,
     };
     const validatedStructured = structuredCVSchema.safeParse(updatedStructured);
     if (!validatedStructured.success) {

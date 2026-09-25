@@ -152,6 +152,7 @@ export async function saveTailoredCvEditsAction(
     education: Array<{ qualification: string; institution: string; date: string }>;
     certifications: string[];
     additionalInfo: string[];
+    referees: Array<{ name: string; jobTitle: string; company: string; email: string; phone: string }>;
   }
 ): Promise<SaveEditsState> {
   const admin = await getAdminProfile();

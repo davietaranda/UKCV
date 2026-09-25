@@ -52,6 +52,7 @@ export default async function AdminRequestDetailPage({
     location: structuredCvForEditing?.contact.location ?? "",
   };
   const editableEducation = structuredCvForEditing?.education ?? [];
+  const editableReferees = structuredCvForEditing?.referees ?? [];
   const editableCertifications = structuredCvForEditing?.certifications ?? [];
   const editableAdditionalInfo = structuredCvForEditing
     ? [
@@ -191,6 +192,7 @@ export default async function AdminRequestDetailPage({
                   contact={editableContact}
                   professionalTitle={editableProfessionalTitle}
                   education={editableEducation}
+                  referees={editableReferees}
                   certifications={editableCertifications}
                   additionalInfo={editableAdditionalInfo}
                   fallbackName={request.customer_name}

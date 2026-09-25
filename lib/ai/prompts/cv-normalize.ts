@@ -53,6 +53,9 @@ whole CV needs fixing, return the input exactly as given.
 Leave professionalTitle exactly as given in the input, completely
 unchanged, even if it is null or an empty string — it is managed entirely
 outside this cleanup pass; never invent, infer, or modify it.
+Leave referees exactly as given in the input (normally an empty array) —
+it is managed entirely outside this cleanup pass; never invent, infer, or
+modify it.
 Return ONLY JSON matching the required schema.
 `.trim();
 

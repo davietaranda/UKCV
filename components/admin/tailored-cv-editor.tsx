@@ -36,6 +36,15 @@ interface EducationDraft {
   date: string;
 }
 
+interface RefereeDraft {
+  _id: string;
+  name: string;
+  jobTitle: string;
+  company: string;
+  email: string;
+  phone: string;
+}
+
 export function TailoredCvEditor({
   requestId,
   tailoredCV,
@@ -43,6 +52,7 @@ export function TailoredCvEditor({
   contact,
   professionalTitle,
   education,
+  referees,
   certifications,
   additionalInfo,
   fallbackName,
@@ -65,6 +75,10 @@ export function TailoredCvEditor({
    * rendered CV unchanged by the AI tailoring stage, so editing them saves
    * to that row instead of outputs.tailored_cv. See saveTailoredCvEdits. */
   education: StructuredCV["education"];
+  /** Optional "References" section — always empty unless an admin has
+   * added entries here (never AI-populated, see structuredCVSchema).
+   * Leaving it with zero entries hides the section on the rendered CV. */
+  referees: StructuredCV["referees"];
   certifications: string[];
   additionalInfo: string[];
   fallbackName: string;
@@ -102,6 +116,16 @@ export function TailoredCvEditor({
       date: ed.date ?? "",
     }))
   );
+  const [refereeDrafts, setRefereeDrafts] = useState<RefereeDraft[]>(
+    referees.map((ref) => ({
+      _id: newId(),
+      name: ref.name,
+      jobTitle: ref.jobTitle,
+      company: ref.company,
+      email: ref.email,
+      phone: ref.phone,
+    }))
+  );
   const [certificationsText, setCertificationsText] = useState(certifications.join("\n"));
   const [additionalInfoText, setAdditionalInfoText] = useState(additionalInfo.join("\n"));
 
@@ -124,6 +148,16 @@ export function TailoredCvEditor({
     setEducationDrafts((prev) => prev.map((ed) => (ed._id === id ? { ...ed, ...patch } : ed)));
   const removeEducation = (id: string) =>
     setEducationDrafts((prev) => prev.filter((ed) => ed._id !== id));
+
+  const addReferee = () =>
+    setRefereeDrafts((prev) => [
+      ...prev,
+      { _id: newId(), name: "", jobTitle: "", company: "", email: "", phone: "" },
+    ]);
+  const updateReferee = (id: string, patch: Partial<RefereeDraft>) =>
+    setRefereeDrafts((prev) => prev.map((ref) => (ref._id === id ? { ...ref, ...patch } : ref)));
+  const removeReferee = (id: string) =>
+    setRefereeDrafts((prev) => prev.filter((ref) => ref._id !== id));
 
   const run = (action: "save" | "render" | "regenerate", fn: () => Promise<{ error?: string }>) => {
     setError(null);
@@ -175,6 +209,13 @@ export function TailoredCvEditor({
         })),
         certifications: editedCertifications,
         additionalInfo: editedAdditionalInfo,
+        referees: refereeDrafts.map((ref) => ({
+          name: ref.name.trim(),
+          jobTitle: ref.jobTitle.trim(),
+          company: ref.company.trim(),
+          email: ref.email.trim(),
+          phone: ref.phone.trim(),
+        })),
       })
     );
   };
@@ -387,6 +428,72 @@ export function TailoredCvEditor({
           Languages, memberships, awards, publications, or anything else shown
           in this section — edited here as one combined list.
         </p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">References (optional)</h3>
+          <Button type="button" variant="outline" size="sm" onClick={addReferee}>
+            + Add referee
+          </Button>
+        </div>
+        {refereeDrafts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No referees added — this section won&rsquo;t appear on the CV.
+          </p>
+        ) : null}
+        {refereeDrafts.map((ref, i) => (
+          <div key={ref._id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Referee {i + 1}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => removeReferee(ref._id)}>
+                Remove
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor={`ref-name-${ref._id}`}>Name</Label>
+                <Input
+                  id={`ref-name-${ref._id}`}
+                  value={ref.name}
+                  onChange={(e) => updateReferee(ref._id, { name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`ref-jobtitle-${ref._id}`}>Job title</Label>
+                <Input
+                  id={`ref-jobtitle-${ref._id}`}
+                  value={ref.jobTitle}
+                  onChange={(e) => updateReferee(ref._id, { jobTitle: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`ref-company-${ref._id}`}>Company</Label>
+                <Input
+                  id={`ref-company-${ref._id}`}
+                  value={ref.company}
+                  onChange={(e) => updateReferee(ref._id, { company: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`ref-email-${ref._id}`}>Email</Label>
+                <Input
+                  id={`ref-email-${ref._id}`}
+                  value={ref.email}
+                  onChange={(e) => updateReferee(ref._id, { email: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`ref-phone-${ref._id}`}>Phone</Label>
+                <Input
+                  id={`ref-phone-${ref._id}`}
+                  value={ref.phone}
+                  onChange={(e) => updateReferee(ref._id, { phone: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <div className="flex flex-wrap gap-2">

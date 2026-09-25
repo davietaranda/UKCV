@@ -47,6 +47,21 @@ export const structuredCVSchema = z.object({
   awards: z.array(z.string()),
   publications: z.array(z.string()),
   other: z.array(z.string()),
+  /** Optional "References" section (referee name/title/company/contact
+   * details). Like professionalTitle, deliberately never populated by
+   * extraction/normalization — see those prompts — so it's always an empty
+   * array unless an admin explicitly adds entries. Third-party personal
+   * data is too easy for AI to mis-extract or invent, so this is
+   * admin-entered only. An empty array hides the section entirely. */
+  referees: z.array(
+    z.object({
+      name: z.string(),
+      jobTitle: z.string(),
+      company: z.string(),
+      email: z.string(),
+      phone: z.string(),
+    })
+  ),
 });
 
 export const jobAnalysisSchema = z.object({
@@ -120,6 +135,7 @@ export const applicationAnswersResultSchema = z.object({
 });
 
 export type StructuredCV = z.infer<typeof structuredCVSchema>;
+export type Referee = StructuredCV["referees"][number];
 export type JobAnalysis = z.infer<typeof jobAnalysisSchema>;
 export type MatchStatus = z.infer<typeof matchStatusSchema>;
 export type EvidenceMatchItem = z.infer<typeof evidenceMatchItemSchema>;

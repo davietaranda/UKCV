@@ -145,6 +145,36 @@ export async function renderCvDocx(content: CvContent): Promise<Buffer> {
     );
   }
 
+  if (content.referees.length > 0) {
+    children.push(sectionHeading("References"));
+    for (const ref of content.referees) {
+      const subtitle = [ref.jobTitle, ref.company].filter(Boolean).join(", ");
+      const contact = [ref.email, ref.phone].filter(Boolean).join("  |  ");
+      children.push(
+        new Paragraph({
+          spacing: { before: 80, after: 0 },
+          children: [new TextRun({ text: ref.name, bold: true, size: 21, color: DARK })],
+        })
+      );
+      if (subtitle) {
+        children.push(
+          new Paragraph({
+            spacing: { after: 0 },
+            children: [new TextRun({ text: subtitle, size: 19, color: DARK })],
+          })
+        );
+      }
+      if (contact) {
+        children.push(
+          new Paragraph({
+            spacing: { after: 100 },
+            children: [new TextRun({ text: contact, size: 19, color: GREY })],
+          })
+        );
+      }
+    }
+  }
+
   const doc = new Document({
     sections: [
       {
