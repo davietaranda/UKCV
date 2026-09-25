@@ -12,17 +12,51 @@ import {
   reRenderDocuments,
   regenerateTailoredCv,
 } from "@/app/admin/(protected)/requests/[id]/actions";
-import type { TailoredCV } from "@/lib/ai/schemas";
+import type { StructuredCV, TailoredCV } from "@/lib/ai/schemas";
+
+function newId() {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
+}
+
+interface ExperienceDraft {
+  _id: string;
+  jobTitle: string;
+  employer: string;
+  startDate: string;
+  endDate: string;
+  bulletsText: string;
+}
+
+interface EducationDraft {
+  _id: string;
+  qualification: string;
+  institution: string;
+  date: string;
+}
 
 export function TailoredCvEditor({
   requestId,
   tailoredCV,
+  name,
+  contact,
   professionalTitle,
+  education,
   certifications,
   additionalInfo,
+  fallbackName,
+  fallbackEmail,
+  fallbackPhone,
 }: {
   requestId: string;
   tailoredCV: TailoredCV;
+  /** From cv_documents.structured_cv.name — blank falls back to the
+   * applicant's own name on the request at render time. */
+  name: string;
+  /** From cv_documents.structured_cv.contact — each blank field falls back
+   * to the matching field on the request at render time. */
+  contact: { email: string; phone: string; location: string };
   /** Pre-filled with the auto-derived suggestion (most recent job title) if
    * never explicitly set — see resolveProfessionalTitle in cv-content.ts.
    * Saving it blank hides the line entirely rather than falling back. */
@@ -30,8 +64,12 @@ export function TailoredCvEditor({
   /** From cv_documents.structured_cv — passed straight through to the
    * rendered CV unchanged by the AI tailoring stage, so editing them saves
    * to that row instead of outputs.tailored_cv. See saveTailoredCvEdits. */
+  education: StructuredCV["education"];
   certifications: string[];
   additionalInfo: string[];
+  fallbackName: string;
+  fallbackEmail: string;
+  fallbackPhone: string | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -39,14 +77,53 @@ export function TailoredCvEditor({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const [nameText, setNameText] = useState(name);
+  const [emailText, setEmailText] = useState(contact.email);
+  const [phoneText, setPhoneText] = useState(contact.phone);
+  const [locationText, setLocationText] = useState(contact.location);
   const [professionalTitleText, setProfessionalTitleText] = useState(professionalTitle);
   const [profile, setProfile] = useState(tailoredCV.tailoredProfile);
   const [skillsText, setSkillsText] = useState(tailoredCV.skills.join("\n"));
-  const [bulletsText, setBulletsText] = useState(
-    tailoredCV.tailoredExperience.map((exp) => exp.bullets.join("\n"))
+  const [experience, setExperience] = useState<ExperienceDraft[]>(
+    tailoredCV.tailoredExperience.map((exp) => ({
+      _id: newId(),
+      jobTitle: exp.jobTitle,
+      employer: exp.employer,
+      startDate: exp.startDate ?? "",
+      endDate: exp.endDate ?? "",
+      bulletsText: exp.bullets.join("\n"),
+    }))
+  );
+  const [educationDrafts, setEducationDrafts] = useState<EducationDraft[]>(
+    education.map((ed) => ({
+      _id: newId(),
+      qualification: ed.qualification,
+      institution: ed.institution,
+      date: ed.date ?? "",
+    }))
   );
   const [certificationsText, setCertificationsText] = useState(certifications.join("\n"));
   const [additionalInfoText, setAdditionalInfoText] = useState(additionalInfo.join("\n"));
+
+  const addExperience = () =>
+    setExperience((prev) => [
+      ...prev,
+      { _id: newId(), jobTitle: "", employer: "", startDate: "", endDate: "", bulletsText: "" },
+    ]);
+  const updateExperience = (id: string, patch: Partial<ExperienceDraft>) =>
+    setExperience((prev) => prev.map((exp) => (exp._id === id ? { ...exp, ...patch } : exp)));
+  const removeExperience = (id: string) =>
+    setExperience((prev) => prev.filter((exp) => exp._id !== id));
+
+  const addEducation = () =>
+    setEducationDrafts((prev) => [
+      ...prev,
+      { _id: newId(), qualification: "", institution: "", date: "" },
+    ]);
+  const updateEducation = (id: string, patch: Partial<EducationDraft>) =>
+    setEducationDrafts((prev) => prev.map((ed) => (ed._id === id ? { ...ed, ...patch } : ed)));
+  const removeEducation = (id: string) =>
+    setEducationDrafts((prev) => prev.filter((ed) => ed._id !== id));
 
   const run = (action: "save" | "render" | "regenerate", fn: () => Promise<{ error?: string }>) => {
     setError(null);
@@ -71,17 +148,31 @@ export function TailoredCvEditor({
 
   const handleSave = () => {
     const skills = skillsText.split("\n").map((s) => s.trim()).filter(Boolean);
-    const experienceBullets = bulletsText.map((text) =>
-      text.split("\n").map((b) => b.trim()).filter(Boolean)
-    );
     const editedCertifications = certificationsText.split("\n").map((s) => s.trim()).filter(Boolean);
     const editedAdditionalInfo = additionalInfoText.split("\n").map((s) => s.trim()).filter(Boolean);
     run("save", () =>
       saveTailoredCvEditsAction(requestId, {
+        name: nameText.trim(),
+        contact: {
+          email: emailText.trim(),
+          phone: phoneText.trim(),
+          location: locationText.trim(),
+        },
         professionalTitle: professionalTitleText.trim(),
         tailoredProfile: profile,
         skills,
-        experienceBullets,
+        experience: experience.map((exp) => ({
+          jobTitle: exp.jobTitle.trim(),
+          employer: exp.employer.trim(),
+          startDate: exp.startDate.trim(),
+          endDate: exp.endDate.trim(),
+          bullets: exp.bulletsText.split("\n").map((b) => b.trim()).filter(Boolean),
+        })),
+        education: educationDrafts.map((ed) => ({
+          qualification: ed.qualification.trim(),
+          institution: ed.institution.trim(),
+          date: ed.date.trim(),
+        })),
         certifications: editedCertifications,
         additionalInfo: editedAdditionalInfo,
       })
@@ -92,6 +183,48 @@ export function TailoredCvEditor({
     <div className="flex flex-col gap-6 rounded-md border border-border p-4">
       {error ? <Alert variant="danger">{error}</Alert> : null}
       {notice ? <Alert variant="success">{notice}</Alert> : null}
+
+      <div>
+        <Label htmlFor="cv-name">Name</Label>
+        <Input
+          id="cv-name"
+          value={nameText}
+          onChange={(e) => setNameText(e.target.value)}
+          placeholder={fallbackName}
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Leave blank to use the applicant&rsquo;s name from the request ({fallbackName}).
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <Label htmlFor="cv-email">Email</Label>
+          <Input
+            id="cv-email"
+            value={emailText}
+            onChange={(e) => setEmailText(e.target.value)}
+            placeholder={fallbackEmail}
+          />
+        </div>
+        <div>
+          <Label htmlFor="cv-phone">Phone</Label>
+          <Input
+            id="cv-phone"
+            value={phoneText}
+            onChange={(e) => setPhoneText(e.target.value)}
+            placeholder={fallbackPhone ?? undefined}
+          />
+        </div>
+        <div>
+          <Label htmlFor="cv-location">Location</Label>
+          <Input
+            id="cv-location"
+            value={locationText}
+            onChange={(e) => setLocationText(e.target.value)}
+          />
+        </div>
+      </div>
 
       <div>
         <Label htmlFor="professional-title">Professional title (optional)</Label>
@@ -122,21 +255,115 @@ export function TailoredCvEditor({
         />
       </div>
 
-      {tailoredCV.tailoredExperience.map((exp, i) => (
-        <div key={i}>
-          <Label htmlFor={`bullets-${i}`}>
-            {exp.jobTitle}, {exp.employer} — bullets (one per line)
-          </Label>
-          <Textarea
-            id={`bullets-${i}`}
-            value={bulletsText[i]}
-            onChange={(e) =>
-              setBulletsText((prev) => prev.map((v, j) => (j === i ? e.target.value : v)))
-            }
-            rows={4}
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Work experience</h3>
+          <Button type="button" variant="outline" size="sm" onClick={addExperience}>
+            + Add job
+          </Button>
         </div>
-      ))}
+        {experience.map((exp, i) => (
+          <div key={exp._id} className="flex flex-col gap-3 rounded-lg border border-border p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Job {i + 1}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => removeExperience(exp._id)}>
+                Remove
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor={`exp-title-${exp._id}`}>Job title</Label>
+                <Input
+                  id={`exp-title-${exp._id}`}
+                  value={exp.jobTitle}
+                  onChange={(e) => updateExperience(exp._id, { jobTitle: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`exp-employer-${exp._id}`}>Employer</Label>
+                <Input
+                  id={`exp-employer-${exp._id}`}
+                  value={exp.employer}
+                  onChange={(e) => updateExperience(exp._id, { employer: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`exp-start-${exp._id}`}>Start date</Label>
+                <Input
+                  id={`exp-start-${exp._id}`}
+                  value={exp.startDate}
+                  onChange={(e) => updateExperience(exp._id, { startDate: e.target.value })}
+                  placeholder="e.g. Jan 2021"
+                />
+              </div>
+              <div>
+                <Label htmlFor={`exp-end-${exp._id}`}>End date</Label>
+                <Input
+                  id={`exp-end-${exp._id}`}
+                  value={exp.endDate}
+                  onChange={(e) => updateExperience(exp._id, { endDate: e.target.value })}
+                  placeholder="Leave blank if current"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor={`exp-bullets-${exp._id}`}>Bullets (one per line)</Label>
+              <Textarea
+                id={`exp-bullets-${exp._id}`}
+                value={exp.bulletsText}
+                onChange={(e) => updateExperience(exp._id, { bulletsText: e.target.value })}
+                rows={4}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Education</h3>
+          <Button type="button" variant="outline" size="sm" onClick={addEducation}>
+            + Add qualification
+          </Button>
+        </div>
+        {educationDrafts.map((ed, i) => (
+          <div key={ed._id} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-muted-foreground">Qualification {i + 1}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={() => removeEducation(ed._id)}>
+                Remove
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div>
+                <Label htmlFor={`edu-qual-${ed._id}`}>Qualification</Label>
+                <Input
+                  id={`edu-qual-${ed._id}`}
+                  value={ed.qualification}
+                  onChange={(e) => updateEducation(ed._id, { qualification: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`edu-institution-${ed._id}`}>Institution</Label>
+                <Input
+                  id={`edu-institution-${ed._id}`}
+                  value={ed.institution}
+                  onChange={(e) => updateEducation(ed._id, { institution: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor={`edu-date-${ed._id}`}>Date</Label>
+                <Input
+                  id={`edu-date-${ed._id}`}
+                  value={ed.date}
+                  onChange={(e) => updateEducation(ed._id, { date: e.target.value })}
+                  placeholder="e.g. 2022"
+                />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div>
         <Label htmlFor="certifications">Certifications (one per line)</Label>

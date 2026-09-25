@@ -137,10 +137,19 @@ export type SaveEditsState = { error?: string };
 export async function saveTailoredCvEditsAction(
   requestId: string,
   edits: {
+    name: string;
+    contact: { email: string; phone: string; location: string };
     professionalTitle: string;
     tailoredProfile: string;
     skills: string[];
-    experienceBullets: string[][];
+    experience: Array<{
+      jobTitle: string;
+      employer: string;
+      startDate: string;
+      endDate: string;
+      bullets: string[];
+    }>;
+    education: Array<{ qualification: string; institution: string; date: string }>;
     certifications: string[];
     additionalInfo: string[];
   }

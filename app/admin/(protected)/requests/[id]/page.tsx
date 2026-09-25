@@ -45,6 +45,13 @@ export default async function AdminRequestDetailPage({
   const editableProfessionalTitle = structuredCvForEditing
     ? (resolveProfessionalTitle(structuredCvForEditing) ?? "")
     : "";
+  const editableName = structuredCvForEditing?.name ?? "";
+  const editableContact = {
+    email: structuredCvForEditing?.contact.email ?? "",
+    phone: structuredCvForEditing?.contact.phone ?? "",
+    location: structuredCvForEditing?.contact.location ?? "",
+  };
+  const editableEducation = structuredCvForEditing?.education ?? [];
   const editableCertifications = structuredCvForEditing?.certifications ?? [];
   const editableAdditionalInfo = structuredCvForEditing
     ? [
@@ -180,9 +187,15 @@ export default async function AdminRequestDetailPage({
                 <TailoredCvEditor
                   requestId={request.id}
                   tailoredCV={outputs.tailored_cv as unknown as TailoredCV}
+                  name={editableName}
+                  contact={editableContact}
                   professionalTitle={editableProfessionalTitle}
+                  education={editableEducation}
                   certifications={editableCertifications}
                   additionalInfo={editableAdditionalInfo}
+                  fallbackName={request.customer_name}
+                  fallbackEmail={request.email}
+                  fallbackPhone={request.phone}
                 />
               </div>
 

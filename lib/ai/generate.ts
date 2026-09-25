@@ -293,29 +293,47 @@ export async function reRenderCvDocuments(requestId: string): Promise<ActionResu
 }
 
 /**
- * Saves admin edits to the tailored CV content (profile, skills, per-role
- * bullets, certifications, additional info) without calling the AI. Does
- * not touch the rendered documents — call reRenderCvDocuments afterwards
- * to reflect the edits in the PDF/DOCX.
+ * Saves admin edits to the tailored CV content (name, contact, profile,
+ * skills, work experience, education, certifications, additional info)
+ * without calling the AI. Does not touch the rendered documents — call
+ * reRenderCvDocuments afterwards to reflect the edits in the PDF/DOCX.
  *
- * Certifications and "Additional Information" aren't part of the tailored
- * CV at all — cv-content.ts passes them straight through from
- * cv_documents.structured_cv unchanged (certifications directly; Additional
- * Information as a merge of structuredCV.languages/memberships/awards/
- * publications/other). Editing them here means writing to that row instead
- * of outputs.tailored_cv. Since "Additional Information" is displayed as
- * one flattened list, editing it as one list and saving it back into just
- * `other` (clearing the other four source arrays) keeps a single, obvious
- * source of truth — there's no way for the admin to tell from the CV which
- * of the five arrays a given line originally came from anyway.
+ * Work experience (job title/employer/dates/bullets) is edited as a full
+ * replacement array, not merged against the previous one — this is what
+ * lets the admin add, remove, and reorder roles, not just edit bullets in
+ * place. It's saved to outputs.tailored_cv.tailoredExperience, the section
+ * the rendered CV actually uses (see cv-content.ts's buildCvContent);
+ * cv_documents.structured_cv.employment stays untouched as the original,
+ * unedited reference shown in the "Original vs tailored" comparison.
+ *
+ * Name, contact, education, certifications, and "Additional Information"
+ * aren't part of the tailored CV at all — cv-content.ts passes them
+ * straight through from cv_documents.structured_cv unchanged (certifications
+ * directly; Additional Information as a merge of structuredCV.languages/
+ * memberships/awards/publications/other). Editing them here means writing
+ * to that row instead of outputs.tailored_cv. Since "Additional Information"
+ * is displayed as one flattened list, editing it as one list and saving it
+ * back into just `other` (clearing the other four source arrays) keeps a
+ * single, obvious source of truth — there's no way for the admin to tell
+ * from the CV which of the five arrays a given line originally came from
+ * anyway.
  */
 export async function saveTailoredCvEdits(
   requestId: string,
   edits: {
+    name: string;
+    contact: { email: string; phone: string; location: string };
     professionalTitle: string;
     tailoredProfile: string;
     skills: string[];
-    experienceBullets: string[][];
+    experience: Array<{
+      jobTitle: string;
+      employer: string;
+      startDate: string;
+      endDate: string;
+      bullets: string[];
+    }>;
+    education: Array<{ qualification: string; institution: string; date: string }>;
     certifications: string[];
     additionalInfo: string[];
   }
@@ -332,17 +350,16 @@ export async function saveTailoredCvEdits(
   const current = outputRow?.tailored_cv as unknown as TailoredCV | undefined;
   if (!current) return { error: "No tailored CV to edit yet — generate one first." };
 
-  if (edits.experienceBullets.length !== current.tailoredExperience.length) {
-    return { error: "Experience section mismatch — reload and try again." };
-  }
-
   const updated: TailoredCV = {
     ...current,
     tailoredProfile: edits.tailoredProfile,
     skills: edits.skills,
-    tailoredExperience: current.tailoredExperience.map((exp, i) => ({
-      ...exp,
-      bullets: edits.experienceBullets[i],
+    tailoredExperience: edits.experience.map((exp) => ({
+      jobTitle: exp.jobTitle,
+      employer: exp.employer,
+      startDate: exp.startDate || null,
+      endDate: exp.endDate || null,
+      bullets: exp.bullets,
     })),
   };
 
@@ -363,10 +380,24 @@ export async function saveTailoredCvEdits(
     const currentStructured = cvDocRow.structured_cv as unknown as StructuredCV;
     const updatedStructured: StructuredCV = {
       ...currentStructured,
+      // Empty string falls back to the request's own customer name/contact
+      // at render time (see buildCvContent's `|| fallback...`), so there's
+      // no need to coerce "" to null here the way professionalTitle does.
+      name: edits.name,
+      contact: {
+        email: edits.contact.email,
+        phone: edits.contact.phone,
+        location: edits.contact.location || null,
+      },
       // "" deliberately stored as-is (not coerced to null) — it means the
       // admin explicitly cleared it, which must hide the line rather than
       // falling back to the auto-derived title. See resolveProfessionalTitle.
       professionalTitle: edits.professionalTitle,
+      education: edits.education.map((ed) => ({
+        qualification: ed.qualification,
+        institution: ed.institution,
+        date: ed.date || null,
+      })),
       certifications: edits.certifications,
       other: edits.additionalInfo,
       languages: [],
