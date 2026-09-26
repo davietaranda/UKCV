@@ -4,7 +4,9 @@ import { buildCvContent } from "@/lib/documents/cv-content";
 import { renderCoverLetterPdf } from "@/lib/documents/cover-letter-pdf";
 import { getSignedDownloadUrl, coverLetterPdfKey, uploadObject } from "@/lib/storage/r2";
 import { extractTextFromCv } from "@/lib/documents/extract-text";
-import type { StructuredCV, TailoredCV } from "@/lib/ai/schemas";
+import { getAIProvider, getActiveModelName } from "@/lib/ai/provider";
+import { withAIRunLogging } from "@/lib/ai/logging";
+import type { StructuredCV, TailoredCV, JobAnalysis } from "@/lib/ai/schemas";
 
 // TEMPORARY — verifies that editing+saving a cover letter actually changes
 // the rendered PDF content, using the admin client to bypass the
@@ -18,6 +20,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const requestId = url.searchParams.get("requestId") ?? "b50c52f4-f0de-4259-a60b-3efee9e10bb7";
+  const restore = url.searchParams.get("restore") === "1";
   const marker = `DEBUG MARKER ${Date.now()}`;
   const testText = `Dear Hiring Manager,\n\n${marker} — this paragraph was saved via the admin editor.\n\nYours faithfully,\nTest`;
 
@@ -54,6 +57,47 @@ export async function GET(request: Request) {
     phone: requestRow.phone,
   });
 
+  let finalText = testText;
+  if (restore) {
+    const { data: jobAnalysisRow } = await admin
+      .from("job_analysis")
+      .select("*")
+      .eq("request_id", requestId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!jobAnalysisRow) {
+      return NextResponse.json({ error: "no job_analysis row to restore from" });
+    }
+    const requirements = (jobAnalysisRow.requirements ?? {}) as {
+      essential?: string[];
+      desirable?: string[];
+      implied?: string[];
+    };
+    const skills = (jobAnalysisRow.skills ?? {}) as { technical?: string[]; soft?: string[] };
+    const jobAnalysis: JobAnalysis = {
+      jobTitle: requestRow.job_title,
+      company: requestRow.company,
+      seniority: null,
+      responsibilities: (jobAnalysisRow.responsibilities as string[] | null) ?? [],
+      essentialRequirements: requirements.essential ?? [],
+      desirableRequirements: requirements.desirable ?? [],
+      impliedSignals: requirements.implied ?? [],
+      technicalSkills: skills.technical ?? [],
+      softSkills: skills.soft ?? [],
+      qualifications: (jobAnalysisRow.qualifications as string[] | null) ?? [],
+      certifications: [],
+      experienceRequirements: [],
+      industryRequirements: [],
+      keywords: (jobAnalysisRow.keywords as string[] | null) ?? [],
+    };
+    const provider = await getAIProvider();
+    finalText = await withAIRunLogging(
+      { requestId, operation: "cover_letter", model: getActiveModelName() },
+      () => provider.generateCoverLetter(structuredCV, jobAnalysis, tailoredCV)
+    );
+  }
+
   const pdfBuffer = await renderCoverLetterPdf({
     name: content.name,
     contactParts: content.contactParts,
@@ -62,17 +106,17 @@ export async function GET(request: Request) {
       requestRow.job_title && requestRow.company
         ? `Re: Application for ${requestRow.job_title} at ${requestRow.company}`
         : undefined,
-    paragraphs: testText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
+    paragraphs: finalText.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
   });
   const key = coverLetterPdfKey(requestId);
   await uploadObject(key, pdfBuffer, "application/pdf");
   await admin
     .from("outputs")
-    .update({ cover_letter: testText, cover_letter_path: key })
+    .update({ cover_letter: finalText, cover_letter_path: key })
     .eq("id", outputRow.id);
 
   // Read back both the DB text and the actual uploaded PDF bytes to confirm
-  // the marker is really in both places, not just claimed.
+  // the save is really in both places, not just claimed.
   const { data: after } = await admin
     .from("outputs")
     .select("cover_letter")
@@ -84,10 +128,11 @@ export async function GET(request: Request) {
   const extractedText = await extractTextFromCv(pdfBytes, "pdf");
 
   return NextResponse.json({
-    marker,
-    dbTextPersisted: after?.cover_letter === testText,
+    restore,
+    marker: restore ? undefined : marker,
+    dbTextPersisted: after?.cover_letter === finalText,
     pdfBytesLength: pdfBytes.length,
-    pdfActuallyContainsMarker: extractedText.includes(marker),
-    extractedTextSample: extractedText.slice(0, 300),
+    pdfActuallyContainsMarker: restore ? undefined : extractedText.includes(marker),
+    extractedTextSample: extractedText.slice(0, 400),
   });
 }
