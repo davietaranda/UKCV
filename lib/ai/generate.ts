@@ -212,32 +212,21 @@ function buildCoverLetterSubject(
   return undefined;
 }
 
-/** Calls Gemini to (re)generate the cover letter from the current tailored
- * CV (whether AI-generated or manually edited) and renders/uploads the PDF. */
-export async function generateCoverLetterAndRender(requestId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const ctx = await loadContext(supabase, requestId);
-  if ("error" in ctx) return ctx;
-  const { request, structuredCV, jobAnalysis, outputRow } = ctx;
+type LoadedContext = Exclude<Awaited<ReturnType<typeof loadContext>>, { error: string }>;
 
+/** Renders and persists a cover letter PDF for the given text — shared by
+ * AI generation and manual admin edits, so the two paths can't drift in
+ * how the PDF is built (subject line, date, name/contact derivation). */
+async function renderAndPersistCoverLetter(
+  requestId: string,
+  coverLetterText: string,
+  supabase: SupabaseClient,
+  ctx: LoadedContext
+): Promise<ActionResult> {
+  const { request, structuredCV, outputRow } = ctx;
   const tailoredCV = outputRow?.tailored_cv as unknown as TailoredCV | undefined;
   if (!tailoredCV) {
     return { error: "Generate the tailored CV first." };
-  }
-
-  const provider = await getAIProvider();
-  let coverLetterText: string;
-  try {
-    coverLetterText = await withAIRunLogging(
-      { requestId, operation: "cover_letter", model: getActiveModelName() },
-      () => provider.generateCoverLetter(structuredCV, jobAnalysis, tailoredCV)
-    );
-  } catch (err) {
-    logger.error("Cover letter generation failed", {
-      requestId,
-      message: err instanceof Error ? err.message : "unknown",
-    });
-    return { error: "AI cover letter generation failed. Check the AI usage log for details." };
   }
 
   const content = buildCvContent(structuredCV, tailoredCV, {
@@ -269,6 +258,55 @@ export async function generateCoverLetterAndRender(requestId: string): Promise<A
     cover_letter: coverLetterText,
     cover_letter_path: coverLetterKey,
   });
+}
+
+/** Calls Gemini to (re)generate the cover letter from the current tailored
+ * CV (whether AI-generated or manually edited) and renders/uploads the PDF. */
+export async function generateCoverLetterAndRender(requestId: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const ctx = await loadContext(supabase, requestId);
+  if ("error" in ctx) return ctx;
+  const { structuredCV, jobAnalysis, outputRow } = ctx;
+
+  const tailoredCV = outputRow?.tailored_cv as unknown as TailoredCV | undefined;
+  if (!tailoredCV) {
+    return { error: "Generate the tailored CV first." };
+  }
+
+  const provider = await getAIProvider();
+  let coverLetterText: string;
+  try {
+    coverLetterText = await withAIRunLogging(
+      { requestId, operation: "cover_letter", model: getActiveModelName() },
+      () => provider.generateCoverLetter(structuredCV, jobAnalysis, tailoredCV)
+    );
+  } catch (err) {
+    logger.error("Cover letter generation failed", {
+      requestId,
+      message: err instanceof Error ? err.message : "unknown",
+    });
+    return { error: "AI cover letter generation failed. Check the AI usage log for details." };
+  }
+
+  return renderAndPersistCoverLetter(requestId, coverLetterText, supabase, ctx);
+}
+
+/** Saves an admin's manual edit to the cover letter text and immediately
+ * re-renders the PDF — one click updates both, same fix as
+ * saveTailoredCvEdits/saveTailoredCvEditsAction (see actions.ts), so an
+ * edit here can't look "not saved" just because the file wasn't updated. */
+export async function saveCoverLetterEdit(
+  requestId: string,
+  coverLetterText: string
+): Promise<ActionResult> {
+  const trimmed = coverLetterText.trim();
+  if (!trimmed) {
+    return { error: "Cover letter can't be empty." };
+  }
+  const supabase = await createClient();
+  const ctx = await loadContext(supabase, requestId);
+  if ("error" in ctx) return ctx;
+  return renderAndPersistCoverLetter(requestId, trimmed, supabase, ctx);
 }
 
 /** Re-renders the CV PDF/DOCX from whatever is currently in

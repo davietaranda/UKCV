@@ -12,7 +12,7 @@ import { MatchList } from "@/components/admin/match-list";
 import { TruthGuardFlags } from "@/components/admin/truth-guard-flags";
 import { CvComparison } from "@/components/admin/cv-comparison";
 import { TailoredCvEditor } from "@/components/admin/tailored-cv-editor";
-import { RegenerateCoverLetterButton } from "@/components/admin/regenerate-cover-letter-button";
+import { CoverLetterEditor } from "@/components/admin/cover-letter-editor";
 import { DeleteRequestButton } from "@/components/admin/delete-request-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { JsonPreview } from "@/components/admin/json-preview";
@@ -229,12 +229,7 @@ export default async function AdminRequestDetailPage({
         <section id="cover-letter" className="scroll-mt-20">
           <h2 className="mb-3 text-lg font-semibold">Cover Letter</h2>
           {outputs?.cover_letter ? (
-            <div className="flex flex-col gap-4">
-              <RegenerateCoverLetterButton requestId={request.id} />
-              <pre className="whitespace-pre-wrap rounded-md bg-muted p-4 text-sm leading-relaxed">
-                {outputs.cover_letter}
-              </pre>
-            </div>
+            <CoverLetterEditor requestId={request.id} coverLetter={outputs.cover_letter} />
           ) : (
             <EmptyState
               title="Not yet generated"

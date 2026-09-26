@@ -12,6 +12,7 @@ import {
   generateCoverLetterAndRender,
   reRenderCvDocuments,
   saveTailoredCvEdits,
+  saveCoverLetterEdit,
 } from "@/lib/ai/generate";
 import { deleteRequestData } from "@/lib/admin/retention";
 import { logger } from "@/lib/logger";
@@ -117,6 +118,20 @@ export async function regenerateCoverLetter(requestId: string): Promise<Regenera
   if (!admin) return { error: "Not authorised." };
 
   const result = await generateCoverLetterAndRender(requestId);
+  revalidatePath(`/admin/requests/${requestId}`);
+  return result;
+}
+
+/** Saves a manual edit to the cover letter text and re-renders the PDF in
+ * the same call — mirrors saveTailoredCvEditsAction. */
+export async function saveCoverLetterEditAction(
+  requestId: string,
+  coverLetterText: string
+): Promise<RegenerateState> {
+  const admin = await getAdminProfile();
+  if (!admin) return { error: "Not authorised." };
+
+  const result = await saveCoverLetterEdit(requestId, coverLetterText);
   revalidatePath(`/admin/requests/${requestId}`);
   return result;
 }
